@@ -8,5 +8,10 @@ router.get('/', (req, res) => {
     res.send('Hello, World!');
 });
 
+//Test out CORS to React App
+router.get('/test', (req,res) => {
+    res.json({ message: 'Hello from the server!' });
+})
+
 // Export the router
 module.exports = router;

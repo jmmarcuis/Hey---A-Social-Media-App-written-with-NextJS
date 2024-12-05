@@ -1,19 +1,43 @@
-// app.js
-const express = require('express');
+//Server File
+const express = require("express");
+const cors = require("cors");
+const chalk = require("chalk");
+
 const app = express();
 
 // Middleware
-app.use(express.json()); // For parsing JSON
+app.use(express.json());
+app.use(cors());
 
-// Import routes
-const routes = require('./Routes/index');
+// Routes
+const routes = require("./Routes/index");
+const authRoutes = require("./Routes/authRoute");
 
-// Use routes
-app.use('/', routes); // Mount the router at the root path
+// Configurations
+const connectDB = require("./Config/dbConfig");
+const { configureCloudinary } = require("./Config/cloudinaryConfig");
 
-// Start the server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
-});
-a
+(async () => {
+  try {
+    // Call in configurations to the server
+    // Call database connection function
+    await connectDB();
+
+    // Call Cloudinary connection function
+    configureCloudinary();
+
+    // Start the server
+    const PORT = process.env.PORT || 3000;
+
+    //Initiate Routes to the Server
+    app.use("/", routes);  
+    app.use("/auth", authRoutes);
+
+    app.listen(PORT, () => {
+      console.log(chalk.blue(`Server is running on http://localhost:${PORT}`));
+    });
+  } catch (error) {
+    console.error(chalk.red(`Server initialization failed: ${error.message}`));
+    process.exit(1);
+  }
+})();
