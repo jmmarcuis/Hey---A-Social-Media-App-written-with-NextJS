@@ -7,7 +7,10 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // Replace this URL if we are going to change to production 
+  credentials: true
+}));
 
 // Routes
 const routes = require("./Routes/index");
@@ -27,7 +30,7 @@ const { configureCloudinary } = require("./Config/cloudinaryConfig");
     configureCloudinary();
 
     // Start the server
-    const PORT = process.env.PORT || 3000;
+    const PORT = process.env.PORT || 4000;
 
     //Initiate Routes to the Server
     app.use("/", routes);  
