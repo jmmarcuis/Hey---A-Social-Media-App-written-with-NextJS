@@ -6,7 +6,8 @@ const {
 } = require("../Utilities/verificationUtility");
 const axios = require("axios");
 const jwt = require("jsonwebtoken");
- 
+const chalk = require("chalk");
+
 // Register Function
 exports.register = async (req, res) => {
   let savedUser = null;
@@ -236,6 +237,9 @@ exports.login = async (req, res) => {
     user.lastLogin = Date.now();
     await user.save();
 
+    console.log(chalk.green(`[DEBUG] LOGIN SUCESSFUL`));
+
+
     // Respond with token and user info
     res.status(200).json({
       message: "Login successful",
@@ -251,5 +255,87 @@ exports.login = async (req, res) => {
     res
       .status(500)
       .json({ message: "Error logging in. Please try again later." });
+  }
+};
+
+exports.verifyToken = async (req, res) => {
+  try {
+    // Get token from header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    // Extract token
+    const token = authHeader.split(' ')[1];
+    
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Find user with decoded token data
+    const user = await User.findOne({
+      _id: decoded.userId,
+      email: decoded.email
+    }).select('-password -verification.otp'); // Exclude sensitive data
+    
+    if (!user) {
+      return res.status(401).json({ message: 'User not found or token invalid' });
+    }
+
+    // Check if user is still verified
+    if (!user.verification.isVerified) {
+      return res.status(403).json({ 
+        message: 'Account is not verified',
+        code: 'UNVERIFIED_ACCOUNT'
+      });
+    }
+
+    // Debug
+    console.log(chalk.green(`[DEBUG] VERIFY SUCESSFUL`));
+
+    // Update last activity
+    user.lastLogin = Date.now();
+    await user.save();
+
+    // Return success with user data
+
+    res.status(200).json({
+      success: true,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        profile: user.profile,
+        isVerified: user.verification.isVerified
+      }
+    });
+
+  } catch (error) {
+    console.error('Token verification error:', error);
+    console.log(chalk.red(`[DEBUG] INVALID TOKEN`));
+
+    // Handle specific JWT errors
+    if (error instanceof jwt.JsonWebTokenError) {
+      console.log(chalk.red(`[DEBUG] INVALID TOKEN`));
+      return res.status(401).json({ 
+        message: 'Invalid token',
+        code: 'INVALID_TOKEN'
+      });
+
+
+    } else if (error instanceof jwt.TokenExpiredError) {
+      console.log(chalk.red(`[DEBUG] EXPIRED TOKEN`));
+      return res.status(401).json({ 
+        message: 'Token has expired',
+        code: 'TOKEN_EXPIRED'
+              });
+
+    }
+
+    // Handle other errors
+    res.status(500).json({ 
+      message: 'Error verifying token',
+      code: 'VERIFICATION_ERROR'
+    });
   }
 };

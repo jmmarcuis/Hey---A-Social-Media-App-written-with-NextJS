@@ -60,19 +60,6 @@ const UserSchema = new Schema(
         required: true,
       },
     },
-
-    contacts: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
-    blockedUsers: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-    ],
     registeredAt: {
       type: Date,
       default: Date.now,
