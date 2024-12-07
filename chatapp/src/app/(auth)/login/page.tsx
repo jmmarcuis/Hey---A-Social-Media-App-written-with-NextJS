@@ -1,9 +1,13 @@
+// Login Page
 "use client"
 import Link from 'next/link';
 import ThemeToggle from '@/app/components/icons/ThemeToggle';
 import { Icon } from '@iconify/react';
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, LoginPayload } from "@/app/validators/authValidation";
 
 export default function Login() {
   // Show Password Function
@@ -12,18 +16,20 @@ export default function Login() {
     setShowPassword(!showPassword);
   };
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const { login, error } = useAuth();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginPayload>({
+    resolver: zodResolver(loginSchema),
+  });
 
-  // Login Form
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const onSubmit = async (data: LoginPayload) => {
     try {
-      await login(email, password);
+      await login(data.email, data.password);
     } catch (loginError) {
-      // Error is already handled in the useAuth hook
-      console.error('Login failed', loginError);
+      console.error("Login failed", loginError);
     }
   };
 
@@ -35,15 +41,9 @@ export default function Login() {
           <p className="text-gray-400 mb-2">
             Enter your email below to login to your account
           </p>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
-          {/* Error Message Display */}
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
-              {error}
-            </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email field */}
             <div>
               <label htmlFor="email" className="block text-black dark:text-white mb-2">
@@ -52,11 +52,13 @@ export default function Login() {
               <input
                 type="email"
                 id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-3 dark:bg-black border border-customGray rounded-md text-black dark:text-white focus:outline-none focus:border-gray-500"
-                required
+                {...register("email")}
+                className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.email ? 'border-red-500' : 'border-customGray'
+                  }`}
               />
+              {errors.email && (
+                <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
+              )}
             </div>
 
             {/* Password field */}
@@ -73,10 +75,9 @@ export default function Login() {
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full p-3 dark:bg-black border border-customGray rounded-md text-black dark:text-white focus:outline-none focus:border-gray-500"
-                  required
+                  {...register("password")}
+                  className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.password ? 'border-red-500' : 'border-customGray'
+                    }`}
                 />
                 <Icon
                   onClick={togglePassword}
@@ -86,17 +87,23 @@ export default function Login() {
                   className='absolute right-3 top-1/2 -translate-y-1/2 text-black dark:text-white cursor-pointer'
                 />
               </div>
+              {errors.password && (
+                <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
+              )}
+              {error && (
+                <p className="text-red-500 text-sm mt-1">{error}</p>
+              )}
             </div>
 
             {/* Login buttons */}
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="w-full text-white bg-black border-black border dark:bg-white dark:text-black rounded-md p-3 font-medium hover:bg-gray-100 transition-colors"
             >
               Login
             </button>
 
-            <button 
+            <button
               type="button"
               className="w-full border text-black border-customGray dark:text-white rounded-md p-3 font-medium transition-colors"
             >

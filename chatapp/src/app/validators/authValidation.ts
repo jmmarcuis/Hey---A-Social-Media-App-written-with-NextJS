@@ -12,10 +12,6 @@ export const loginSchema = z.object({
 
 // Register validation schema
 export const registerSchema = z.object({
-  profile: z.object({
-    firstName: z.string().min(1, "First name is required"),
-    lastName: z.string().min(1, "Last name is required"),
-  }),
   username: z.string().min(3, "Username too short"),
   email: z.string().email("Invalid email format"),
   password: z
