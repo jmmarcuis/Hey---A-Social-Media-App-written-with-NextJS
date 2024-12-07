@@ -27,6 +27,7 @@ export default function Login() {
 
   const onSubmit = async (data: LoginPayload) => {
     try {
+      // Call in the authorization hook with the form 
       await login(data.email, data.password);
     } catch (loginError) {
       console.error("Login failed", loginError);
@@ -102,13 +103,14 @@ export default function Login() {
             >
               Login
             </button>
-
             <button
               type="button"
-              className="w-full border text-black border-customGray dark:text-white rounded-md p-3 font-medium transition-colors"
+              className="w-full border text-black border-customGray dark:text-white rounded-md p-3 font-medium transition-colors flex items-center justify-center gap-2"
             >
-              Login with Google
+              <Icon icon="ph:google-logo-bold" className="w-5 h-5" />
+              <span>Login with Google</span>
             </button>
+
           </form>
 
           {/* Sign up link */}

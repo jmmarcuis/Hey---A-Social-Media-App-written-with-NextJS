@@ -12,7 +12,7 @@ export const loginSchema = z.object({
 
 // Register validation schema
 export const registerSchema = z.object({
-  username: z.string().min(3, "Username too short"),
+  username: z.string().min(3, "Username must be at least 3 characters long"),
   email: z.string().email("Invalid email format"),
   password: z
     .string()
@@ -22,15 +22,11 @@ export const registerSchema = z.object({
       /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/,
       "Password must include letters, numbers, and at least one special character"
     ),
-  dateOfBirth: z
-    .string()
-    .regex(
-      /^\d{4}-\d{2}-\d{2}$/,
-      "Date of birth must be in the format YYYY-MM-DD"
-    )
-    .refine((date) => !isNaN(Date.parse(date)), "Invalid date format"),
+  confirmPassword: z.string().min(1, "Confirm Password is required")
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],  
 });
-
 // Infer types from the schemas
 export type LoginPayload = z.infer<typeof loginSchema>;
 export type RegisterPayload = z.infer<typeof registerSchema>;

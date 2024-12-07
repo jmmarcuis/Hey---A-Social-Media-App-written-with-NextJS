@@ -4,32 +4,19 @@ const {
   sendOTPEmail,
   cleanupFailedRegistration,
 } = require("../Utilities/verificationUtility");
-const axios = require("axios");
 const jwt = require("jsonwebtoken");
 const chalk = require("chalk");
+const bcrypt = require("bcrypt");
 
 // Register Function
 exports.register = async (req, res) => {
   let savedUser = null;
 
   try {
-    const {
-      profile: { firstName, lastName },
-      username,
-      email,
-      password,
-      dateOfBirth,
-    } = req.body;
+    const { username, email, password } = req.body;
 
     // Input validation
-    if (
-      !firstName ||
-      !lastName ||
-      !username ||
-      !email ||
-      !password ||
-      !dateOfBirth
-    ) {
+    if (!username || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -47,18 +34,15 @@ exports.register = async (req, res) => {
       }
     }
 
+    // Hash password
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     // Create a new user
     const user = new User({
       username,
       email,
-      password,
-      profile: {
-        firstName,
-        lastName,
-        dateOfBirth,
-        profilePicture:
-          "https://res.cloudinary.com/drf4qnjow/image/upload/v1728341592/profile_pictures/placeholder.jpg",
-      },
+      password: hashedPassword,
     });
 
     // Generate OTP and assign to user
@@ -80,10 +64,16 @@ exports.register = async (req, res) => {
       );
     }
 
+    // Return user details 
     res.status(201).json({
       success: true,
-      message:
-        "Registration successful. Please check your email for the OTP to verify your account",
+      message: "Registration successful. Please check your email for the OTP to verify your account",
+      user: {
+        id: savedUser._id,
+        username: savedUser.username,
+        email: savedUser.email,
+        isVerified: savedUser.verification.isVerified
+      }
     });
   } catch (error) {
     // Rollback on any error
@@ -239,7 +229,6 @@ exports.login = async (req, res) => {
 
     console.log(chalk.green(`[DEBUG] LOGIN SUCESSFUL`));
 
-
     // Respond with token and user info
     res.status(200).json({
       message: "Login successful",
@@ -262,31 +251,33 @@ exports.verifyToken = async (req, res) => {
   try {
     // Get token from header
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'No token provided' });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "No token provided" });
     }
 
     // Extract token
-    const token = authHeader.split(' ')[1];
-    
+    const token = authHeader.split(" ")[1];
+
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
+
     // Find user with decoded token data
     const user = await User.findOne({
       _id: decoded.userId,
-      email: decoded.email
-    }).select('-password -verification.otp'); // Exclude sensitive data
-    
+      email: decoded.email,
+    }).select("-password -verification.otp"); // Exclude sensitive data
+
     if (!user) {
-      return res.status(401).json({ message: 'User not found or token invalid' });
+      return res
+        .status(401)
+        .json({ message: "User not found or token invalid" });
     }
 
     // Check if user is still verified
     if (!user.verification.isVerified) {
-      return res.status(403).json({ 
-        message: 'Account is not verified',
-        code: 'UNVERIFIED_ACCOUNT'
+      return res.status(403).json({
+        message: "Account is not verified",
+        code: "UNVERIFIED_ACCOUNT",
       });
     }
 
@@ -306,36 +297,32 @@ exports.verifyToken = async (req, res) => {
         username: user.username,
         email: user.email,
         profile: user.profile,
-        isVerified: user.verification.isVerified
-      }
+        isVerified: user.verification.isVerified,
+      },
     });
-
   } catch (error) {
-    console.error('Token verification error:', error);
+    console.error("Token verification error:", error);
     console.log(chalk.red(`[DEBUG] INVALID TOKEN`));
 
     // Handle specific JWT errors
     if (error instanceof jwt.JsonWebTokenError) {
       console.log(chalk.red(`[DEBUG] INVALID TOKEN`));
-      return res.status(401).json({ 
-        message: 'Invalid token',
-        code: 'INVALID_TOKEN'
+      return res.status(401).json({
+        message: "Invalid token",
+        code: "INVALID_TOKEN",
       });
-
-
     } else if (error instanceof jwt.TokenExpiredError) {
       console.log(chalk.red(`[DEBUG] EXPIRED TOKEN`));
-      return res.status(401).json({ 
-        message: 'Token has expired',
-        code: 'TOKEN_EXPIRED'
-              });
-
+      return res.status(401).json({
+        message: "Token has expired",
+        code: "TOKEN_EXPIRED",
+      });
     }
 
     // Handle other errors
-    res.status(500).json({ 
-      message: 'Error verifying token',
-      code: 'VERIFICATION_ERROR'
+    res.status(500).json({
+      message: "Error verifying token",
+      code: "VERIFICATION_ERROR",
     });
   }
 };
