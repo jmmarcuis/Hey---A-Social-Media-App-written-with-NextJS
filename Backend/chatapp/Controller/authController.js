@@ -10,88 +10,97 @@ const bcrypt = require("bcrypt");
 
 // Register Function
 exports.register = async (req, res) => {
-  let savedUser = null;
+  let user = null;
 
   try {
     const { username, email, password } = req.body;
 
     // Input validation
     if (!username || !email || !password) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({
+        success: false,
+        message: "All fields are required",
+      });
     }
 
-    // Check for existing user by email or username
+    // Check for existing user
     const existingUser = await User.findOne({
       $or: [{ email }, { username }],
     });
 
     if (existingUser) {
-      if (existingUser.email === email) {
-        return res.status(400).json({ message: "Email already in use" });
-      }
-      if (existingUser.username === username) {
-        return res.status(400).json({ message: "Username already in use" });
-      }
+      const message =
+        existingUser.email === email
+          ? "Email already in use"
+          : "Username already in use";
+      return res.status(400).json({
+        success: false,
+        message,
+      });
     }
 
     // Hash password
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create a new user
-    const user = new User({
+    user = new User({
       username,
       email,
       password: hashedPassword,
+      verification: {
+        otp: {
+          code: generateOTP(),
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // OTP valid for 10 mins
+        },
+      },
     });
-
-    // Generate OTP and assign to user
-    const otp = generateOTP();
-    user.verification.otp.code = otp;
-    user.verification.otp.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     // Save the user
-    savedUser = await user.save();
+    await user.save();
 
     // Send OTP email
-    try {
-      await sendOTPEmail(email, otp);
-    } catch (emailError) {
-      // Rollback on email failure
-      await cleanupFailedRegistration(savedUser._id);
-      throw new Error(
-        "Failed to send verification email. Registration cancelled."
-      );
-    }
+    await sendOTPEmail(email, user.verification.otp.code);
 
-    // Return user details 
-    res.status(201).json({
+    // Generate JWT Token
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET, // Ensure JWT_SECRET is set in your environment variables
+      { expiresIn: "1h" } // Token expires in 1 hour
+    );
+
+    // Return success response
+    return res.status(201).json({
       success: true,
-      message: "Registration successful. Please check your email for the OTP to verify your account",
+      message:
+        "Registration successful. Check your email for the OTP to verify your account.",
+      token,
       user: {
-        id: savedUser._id,
-        username: savedUser.username,
-        email: savedUser.email,
-        isVerified: savedUser.verification.isVerified
-      }
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        isVerified: user.verification.isVerified,
+      },
     });
   } catch (error) {
-    // Rollback on any error
-    if (savedUser) {
+    // Cleanup user if partially created
+    if (user) {
       try {
-        await cleanupFailedRegistration(savedUser._id);
+        await cleanupFailedRegistration(user._id);
       } catch (cleanupError) {
         console.error("Cleanup failed:", cleanupError);
       }
     }
 
-    res.status(400).json({
+    // Log the error and send a consistent error response
+    console.error("Registration Error:", error);
+    return res.status(500).json({
       success: false,
-      message: error.message || "Registration failed. Please try again.",
+      message:
+        error.message ||
+        "An error occurred during registration. Please try again.",
     });
   }
 };
-
 // Verify Email
 exports.verifyEmail = async (req, res) => {
   try {
@@ -110,14 +119,36 @@ exports.verifyEmail = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Check if OTP matches and is not expired
-    if (
-      user.verification.otp.code !== otp ||
-      user.verification.otp.expiresAt < new Date()
-    ) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
+    // Check if already verified
+    if (user.verification.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is already verified",
+      });
     }
 
+    // Check if OTP matches and is not expired
+    if (user.verification.otp.code !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Incorrect/Expired OTP",
+      });
+    }
+
+    if (user.verification.otp.expiresAt < new Date()) {
+      // Generate new OTP instead of deleting the user
+      user.verification.otp.code = generateOTP();
+      user.verification.otp.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      await user.save();
+
+      // Send new OTP
+      await sendOTPEmail(email, user.verification.otp.code);
+
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired. New OTP has been sent to your email.",
+      });
+    }
     // Mark user as verified
     user.verification.isVerified = true;
 
@@ -128,9 +159,24 @@ exports.verifyEmail = async (req, res) => {
     // Save the updated user
     await user.save();
 
-    res.status(200).json({
+    
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+    
+    return res.status(201).json({
       success: true,
-      message: "Email verified successfully",
+      message:
+        "Registration successful. Check your email for the OTP to verify your account.",
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        isVerified: user.verification.isVerified,
+      },
     });
   } catch (error) {
     console.error("Email verification error", error);
@@ -140,6 +186,53 @@ exports.verifyEmail = async (req, res) => {
     });
   }
 };
+
+exports.cancelVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Input validation
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email is required"
+      });
+    }
+
+    // Find the user
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Only allow cancellation for unverified users
+    if (user.verification.isVerified) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot cancel verification for already verified user"
+      });
+    }
+
+    // Use the cleanup function to remove the unverified user
+    await cleanupFailedRegistration(user._id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification cancelled and registration cleaned up successfully"
+    });
+  } catch (error) {
+    console.error("Verification cancellation error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to cancel verification. Please try again."
+    });
+  }
+};
+
 
 // Resend OTP
 exports.resendOTP = async (req, res) => {

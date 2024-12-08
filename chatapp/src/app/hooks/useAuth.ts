@@ -1,63 +1,56 @@
 // src/hooks/useAuth.ts
+"use client"
 import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { loginSchema, registerSchema } from '../validators/authValidation';
-
-interface AuthUser {
-    id: string;
-    email: string;
-    username: string;
-    password: string;
-    token: string;
-    isVerified: boolean;
-}
+import { loginSchema, registerSchema, otpVerificationSchema } from '../validators/authValidation';
+import { AuthUser, AuthResponse, LoginPayload, RegisterPayload, OtpVerificationPayload, User } from '../types/Users';
+import { z } from 'zod';
 
 export function useAuth() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
 
-     // Register Hook
+    // Register Hook
     const register = async (username: string, email: string, password: string) => {
-        // Reset previous errors
-        setError(null);
-
-        // Validate register input using Zod
-        const validationResult = registerSchema.safeParse({
-            username,
-            email,
-            password,
-            confirmPassword: password // Pass the same password for confirmation
-        });
-
-        // Check if current input is valid
-        if (!validationResult.success) {
-            // Get the first error message
-            const errorMessage = validationResult.error.errors[0].message;
-            setError(errorMessage);
-            throw new Error(errorMessage);
-        }
-
         try {
-            const response = await axios.post<{ message: string, user: AuthUser }>(
+            setError(null);
+            const registerData: RegisterPayload = {
+                username,
+                email,
+                password,
+                confirmPassword: password
+            };
+
+            // Zod automatically validates the types and values
+            registerSchema.parse(registerData);
+
+            const response = await axios.post<AuthResponse>(
                 'http://localhost:4000/auth/register',
-                { username, email, password }
+                registerData
             );
 
-            const { message, user } = response.data;
+            const { message, token, user: responseUser } = response.data;
 
-            // Debug logging
-            console.log(`Message: ${message}`);
-            console.log(`Username: ${user.username}`);
-            console.log(`Email: ${user.email}`);
-            console.log(`Verification Status: ${user.isVerified}`);
+            const authUser: AuthUser = {
+                id: responseUser.id,
+                email: responseUser.email,
+                username: responseUser.username,
+                token,
+                verification: responseUser.verification
+            };
 
-            // Redirect to OTP request or complete profile
-            router.push('/completeProfile');
+            console.log(message);
+            setUser(authUser);
 
-            return user;
+            return authUser;
         } catch (error) {
+            if (error instanceof z.ZodError) {
+                const errorMessage = error.errors[0].message;
+                setError(errorMessage);
+                throw new Error(errorMessage);
+            }
             if (axios.isAxiosError(error)) {
                 const errorMessage = error.response?.data?.message || 'Registration failed';
                 setError(errorMessage);
@@ -65,47 +58,153 @@ export function useAuth() {
             }
             throw error;
         }
-    }
+    };
+
+
+    // Verify Email Hook
+    const verify = async (email: string, otp: string): Promise<User> => {
+        try {
+            console.log('Verifying OTP:', { email, otp });
+            setError(null);
+            const verificationData: OtpVerificationPayload = { email, otp };
+            otpVerificationSchema.parse(verificationData);
+
+            const response = await axios.post<AuthResponse>(
+                'http://localhost:4000/auth/verify',
+                verificationData
+            );
+
+            console.log('Verification response:', response.data);
+
+            const { user: responseUser } = response.data;
+
+            if (!responseUser) {
+                throw new Error('No user data received');
+            }
+
+            const authUser: AuthUser = {
+                id: responseUser.id,
+                email: responseUser.email,
+                username: responseUser.username,
+                token: '', // No token at this stage
+                verification: {
+                    isVerified: true,
+                    otp: undefined
+                }
+            };
+
+            setUser(authUser);
+            router.push('/completeProfile')
+
+            return responseUser;
+        } catch (error) {
+            console.error('Full verification error:', error);
+
+            if (axios.isAxiosError(error)) {
+                const errorMessage = error.response?.data?.message || 'Verification failed';
+                console.error('Axios error message:', errorMessage);
+                setError(errorMessage);
+                throw new Error(errorMessage);
+            } else if (error instanceof z.ZodError) {
+                const errorMessage = error.errors[0].message;
+                console.error('Zod validation error:', errorMessage);
+                setError(errorMessage);
+                throw new Error(errorMessage);
+            } else {
+                console.error('Unexpected error:', error);
+                setError('An unexpected error occurred');
+                throw error;
+            }
+        }
+    };
+    const resendOTP = async (email: string): Promise<{ success: boolean; message: string }> => {
+        try {
+            setError(null);
+            const response = await axios.post<AuthResponse>(
+                'http://localhost:4000/auth/resend-otp',
+                { email }
+            );
+
+            return {
+                success: true,
+                message: response.data.message
+            };
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const errorMessage = error.response?.data?.message || 'Failed to resend OTP';
+                setError(errorMessage);
+            } else {
+                setError('An unexpected error occurred');
+            }
+            throw error;
+        }
+    };
+
+    const cancelVerification = async (email: string): Promise<{ success: boolean; message: string }> => {
+        try {
+            setError(null);
+            const response = await axios.post<AuthResponse>(
+                'http://localhost:4000/auth/verify/cancel',
+                { email }
+            );
+
+            setUser(null);
+            localStorage.removeItem('token');
+
+            return {
+                success: true,
+                message: response.data.message
+            };
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const errorMessage = error.response?.data?.message || 'Failed to cancel verification';
+                setError(errorMessage);
+            } else {
+                setError('An unexpected error occurred');
+            }
+            throw error;
+        }
+    };
+
 
     // Login Hook
     const login = async (email: string, password: string) => {
-        // Reset previous errors
-        setError(null);
-
-        // Validate login input using Zod
-        const validationResult = loginSchema.safeParse({ email, password });
-
-        if (!validationResult.success) {
-            const errorMessage = validationResult.error.errors[0].message;
-            setError(errorMessage);
-            throw new Error(errorMessage);
-        }
-
         try {
-            const response = await axios.post<{ message: string; token: string; user: AuthUser }>(
+            setError(null);
+            const loginData: LoginPayload = { email, password };
+
+            // Zod automatically validates the types and values
+            loginSchema.parse(loginData);
+
+            const response = await axios.post<AuthResponse>(
                 'http://localhost:4000/auth/login',
-                { email, password }
+                loginData
             );
 
-            const { message, token, user } = response.data;
+            const { message, token, user: responseUser } = response.data;
 
-            // Log the message, username, token and email for debugging purposes
-            // Reminder to self, remove this if everything is all skibidi
-            console.log(`Message: ${message}`);
-            console.log(`Username: ${user.username}`);
-            console.log(`Email: ${user.email}`);
-            console.log(`Token: ${token}`);
+            const authUser: AuthUser = {
+                id: responseUser.id,
+                email: responseUser.email,
+                username: responseUser.username,
+                token,
+                verification: responseUser.verification
+            };
 
-
-            // Store token securely
             localStorage.setItem('token', token);
-            setUser(user);
+            setUser(authUser);
 
-            // Redirect to dashboard or home page
+            console.log(message);
+
             router.push('/home');
 
-            return user;
+            return authUser;
         } catch (error) {
+            if (error instanceof z.ZodError) {
+                const errorMessage = error.errors[0].message;
+                setError(errorMessage);
+                throw new Error(errorMessage);
+            }
             if (axios.isAxiosError(error)) {
                 const errorMessage = error.response?.data?.message || 'Login failed';
                 setError(errorMessage);
@@ -115,10 +214,7 @@ export function useAuth() {
         }
     };
 
-    // Logout Hook
     const logout = () => {
-
-        console.log("logout function called");
         localStorage.removeItem('token');
         setUser(null);
         router.push('/login');
@@ -127,6 +223,9 @@ export function useAuth() {
     return {
         user,
         register,
+        verify,
+        resendOTP,
+        cancelVerification,
         login,
         logout,
         error

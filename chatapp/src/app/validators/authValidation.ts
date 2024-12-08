@@ -1,4 +1,5 @@
 // src/validations/authValidation.ts
+"use client"
 import { z } from "zod";
 
 // Login validation schema
@@ -27,6 +28,18 @@ export const registerSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],  
 });
+
+// OTP validation schema
+export const otpVerificationSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  otp: z.string()
+    .min(6, "OTP must be at least 6 characters")
+    .max(6, "OTP must be exactly 6 characters")
+    .regex(/^\d+$/, "OTP must contain only numbers")
+});
+
+
 // Infer types from the schemas
 export type LoginPayload = z.infer<typeof loginSchema>;
 export type RegisterPayload = z.infer<typeof registerSchema>;
+export type OtpVerificationPayload = z.infer<typeof otpVerificationSchema>;

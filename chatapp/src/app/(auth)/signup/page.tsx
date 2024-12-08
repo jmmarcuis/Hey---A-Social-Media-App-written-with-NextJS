@@ -1,3 +1,4 @@
+// Signup Page
 "use client"
 import Link from 'next/link';
 import ThemeToggle from '@/app/components/icons/ThemeToggle';
@@ -7,6 +8,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerSchema, RegisterPayload } from '@/app/validators/authValidation';
+import OTPModal from '@/app/components/modals/otpModal';
 
 export default function Signup() {
   // Show Password Function
@@ -23,25 +25,50 @@ export default function Signup() {
     }));
   };
 
+  // Call in all methods in the useAuth hook   
+  const { register: registerUser, verify, error: authError } = useAuth();
+
   // Registration Function
-  const { register: registerUser, error: authError } = useAuth();
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<RegisterPayload>({
     resolver: zodResolver(registerSchema),
-    mode: 'onBlur' // Validate on blur to catch errors more dynamically
+    mode: 'onBlur'
   });
 
+
   // Submit Registration Form
-  const onSubmit = async (data: RegisterPayload) => {
+ const onSubmit = async (data: RegisterPayload) => {
+  try {
+    const user = await registerUser(data.username, data.email, data.password);
+    console.log('Registration successful:', user);
+    setRegisteredEmail(data.email); // Set email first
+    setIsOTPModalOpen(true);
+  } catch (error) {
+    console.error("Registration failed", error);
+  }
+};
+
+
+  // OTP Modal Function
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
+
+  const handleVerification = async (email: string, otp: string) => {
     try {
-      await registerUser(data.username, data.email, data.password);
+      console.log('Attempting to verify:', { email, otp });
+      await verify(email, otp);
+      console.log('Verification successful');
+      setIsOTPModalOpen(false);  
+      console.log('OTP verified successfully!');
     } catch (error) {
-      console.error("Registration failed", error);
+      console.error('Verification failed:', error);
+      throw error;
     }
   };
+
 
   return (
     <div className="h-screen flex items-center flex-col justify-center bg-white dark:bg-black">
@@ -62,9 +89,8 @@ export default function Signup() {
                 type="text"
                 id="username"
                 {...register("username")}
-                className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${
-                  errors.username ? 'border-red-500' : 'border-customGray'
-                }`}
+                className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.username ? 'border-red-500' : 'border-customGray'
+                  }`}
               />
               {errors.username && (
                 <p className="text-red-500 text-sm mt-1">{errors.username.message}</p>
@@ -80,9 +106,8 @@ export default function Signup() {
                 type="email"
                 id="email"
                 {...register("email")}
-                className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${
-                  errors.email ? 'border-red-500' : 'border-customGray'
-                }`}
+                className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.email ? 'border-red-500' : 'border-customGray'
+                  }`}
               />
               {errors.email && (
                 <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
@@ -99,9 +124,8 @@ export default function Signup() {
                   type={showPassword.password ? "text" : "password"}
                   id="password"
                   {...register("password")}
-                  className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${
-                    errors.password ? 'border-red-500' : 'border-customGray'
-                  }`}
+                  className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.password ? 'border-red-500' : 'border-customGray'
+                    }`}
                 />
                 <Icon
                   onClick={() => togglePasswordVisibility('password')}
@@ -126,9 +150,8 @@ export default function Signup() {
                   type={showPassword.confirmPassword ? "text" : "password"}
                   id="confirmPassword"
                   {...register("confirmPassword")}
-                  className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${
-                    errors.confirmPassword ? 'border-red-500' : 'border-customGray'
-                  }`}
+                  className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.confirmPassword ? 'border-red-500' : 'border-customGray'
+                    }`}
                 />
                 <Icon
                   onClick={() => togglePasswordVisibility('confirmPassword')}
@@ -150,9 +173,10 @@ export default function Signup() {
             {/* Register button */}
             <button
               type="submit"
-              className="w-full text-white bg-black border-black border dark:bg-white dark:text-black rounded-md p-3 font-medium hover:bg-gray-100 transition-colors"
+              disabled={isSubmitting}
+              className="w-full text-white bg-black border-black border dark:bg-white dark:text-black rounded-md p-3 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Register
+              {isSubmitting ? 'Registering...' : 'Register'}
             </button>
 
             <button
@@ -171,7 +195,12 @@ export default function Signup() {
               Login
             </Link>
           </div>
-
+          <OTPModal
+            isOpen={isOTPModalOpen}
+            onClose={() => setIsOTPModalOpen(false)}
+            onVerify={handleVerification}
+            email={registeredEmail}
+          />
           <ThemeToggle />
         </div>
       </div>
