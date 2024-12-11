@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { loginSchema, registerSchema, otpVerificationSchema } from '../validators/authValidation';
-import { AuthUser, AuthResponse, LoginPayload, RegisterPayload, OtpVerificationPayload, User } from '../types/Users';
+import { loginSchema, registerSchema, otpVerificationSchema, LoginPayload, RegisterPayload, OtpVerificationPayload } from '../validators/authValidation';
+import { AuthUser, AuthResponse , User } from '../types/Users';
 import { z } from 'zod';
 
 export function useAuth() {
@@ -86,7 +86,7 @@ export function useAuth() {
                 id: responseUser.id,
                 email: responseUser.email,
                 username: responseUser.username,
-                token: '', // No token at this stage
+                token: '',
                 verification: {
                     isVerified: true,
                     otp: undefined
@@ -192,7 +192,8 @@ export function useAuth() {
             };
 
             localStorage.setItem('token', token);
-            setUser(authUser);
+            await router.push('/home');
+            
 
             console.log(message);
 

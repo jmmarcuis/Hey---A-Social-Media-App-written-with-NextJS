@@ -38,6 +38,10 @@ export const otpVerificationSchema = z.object({
     .regex(/^\d+$/, "OTP must contain only numbers")
 });
 
+// Auth-specific interfaces using Zod inference
+export type LoginCredentials = z.infer<typeof loginSchema>;
+export type RegisterCredentials = z.infer<typeof registerSchema>;
+ 
 
 // Infer types from the schemas
 export type LoginPayload = z.infer<typeof loginSchema>;

@@ -1,7 +1,5 @@
+// src/types/Users.ts
 "use client"
-import { z } from "zod";
-import { loginSchema, registerSchema, otpVerificationSchema  } from "../validators/authValidation";
-
 export interface User {
   id: string;
   username: string;
@@ -42,12 +40,7 @@ export interface User {
   lastLogin?: Date;
 }
 
-// Auth-specific interfaces using Zod inference
-export type LoginCredentials = z.infer<typeof loginSchema>;
-export type RegisterCredentials = z.infer<typeof registerSchema>;
-export type LoginPayload = z.infer<typeof loginSchema>;
-export type RegisterPayload = z.infer<typeof registerSchema>;
-export type OtpVerificationPayload = z.infer<typeof otpVerificationSchema>;
+
 
 // Authentication response interfaces
 export interface AuthResponse {
