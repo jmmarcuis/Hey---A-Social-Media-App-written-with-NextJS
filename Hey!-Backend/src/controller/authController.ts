@@ -265,17 +265,17 @@ const authController = {
   cancelVerification: async (req: Request, res: Response): Promise<any> => {
     try {
       const { email } = req.body;
-  
+
       // Find the user by email
       const user = await User.findOne({ email }) as IUser | null;
-  
+
       if (!user) {
         return res.status(404).json({
           success: false,
           message: 'User not found'
         });
       }
-  
+
       // Only allow cancellation for unverified users
       if (user.verification.isVerified) {
         return res.status(400).json({
@@ -283,10 +283,10 @@ const authController = {
           message: 'Cannot cancel verification for already verified user'
         });
       }
-  
+
       // Remove the user or mark as cancelled (depends on your requirements)
       await User.findByIdAndDelete(user._id);
-  
+
       return res.status(200).json({
         success: true,
         message: 'Verification cancelled and registration deleted successfully'
@@ -351,7 +351,8 @@ const authController = {
       if (!user) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          error_code: 'INVALID_CREDENTIALS',
+          message: 'Invalid email or password.',
         });
       }
 
@@ -359,6 +360,7 @@ const authController = {
       if (!user.verification.isVerified) {
         return res.status(403).json({
           success: false,
+          error_code: 'EMAIL_NOT_VERIFIED',
           message: 'Email not verified. Please verify your email before logging in.',
         });
       }
@@ -368,35 +370,45 @@ const authController = {
       if (!isPasswordValid) {
         return res.status(401).json({
           success: false,
-          message: 'Invalid email or password'
+          error_code: 'INVALID_CREDENTIALS',
+          message: 'Invalid email or password.',
         });
       }
 
-      // Generate JWT token
-      const token = generateTokens(user);
+      // Generate tokens
+      const { accessToken, refreshToken } = generateTokens(user);
 
-      // Update last login
+      // Save refresh token in the database
+      user.refreshTokens.push({
+        token: refreshToken,
+        createdAt: new Date(),
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      });
       user.lastLogin = new Date();
       await user.save();
 
+      // Respond with tokens and user info
       console.log(chalk.green('[DEBUG] LOGIN SUCCESSFUL'));
-
-      // Respond with token and user info
       return res.status(200).json({
         success: true,
-        message: 'Login successful',
-        token,
+        message: 'Login successful.',
+        tokens: {
+          accessToken,
+          refreshToken,
+        },
         user: {
           id: user._id,
           username: user.username,
           email: user.email,
+          profilePicture: user.profile?.profilePicture || '/default-avatar.png',
         },
       });
     } catch (error) {
-      console.error('Login error:', error);
+      console.error(chalk.red('[ERROR] Login error:'), error);
       return res.status(500).json({
         success: false,
-        message: 'Error logging in. Please try again later.'
+        error_code: 'INTERNAL_SERVER_ERROR',
+        message: 'Error logging in. Please try again later.',
       });
     }
   },
@@ -467,14 +479,14 @@ const authController = {
 
       // Handle specific JWT errors
       if (error instanceof jwt.JsonWebTokenError) {
-        console.log(chalk.red('[DEBUG] INVALID TOKEN'));
+        console.log(chalk.red('[DEBUG FROM VERIFY TOKEN CONTROLLER] INVALID TOKEN'));
         return res.status(401).json({
           success: false,
           message: 'Invalid token',
           code: 'INVALID_TOKEN',
         });
       } else if (error instanceof jwt.TokenExpiredError) {
-        console.log(chalk.red('[DEBUG] EXPIRED TOKEN'));
+        console.log(chalk.red('[DEBUG FROM VERIFY TOKEN CONTROLLER] EXPIRED TOKEN'));
         return res.status(401).json({
           success: false,
           message: 'Token has expired',
@@ -491,8 +503,8 @@ const authController = {
     }
   },
 
-   // Token Refresh Controller
-   refreshToken: async (req: Request, res: Response): Promise<any> => {
+  // Token Refresh Controller
+  refreshToken: async (req: Request, res: Response): Promise<any> => {
     try {
       const { refreshToken } = req.body;
 
@@ -505,14 +517,14 @@ const authController = {
 
       // Verify the refresh token
       const decoded = jwt.verify(
-        refreshToken, 
+        refreshToken,
         TOKEN_CONFIG.REFRESH_TOKEN_SECRET
       ) as TokenPayload;
 
       // Find user and check if refresh token is valid
-      const user = await User.findOne({ 
-        _id: decoded.id, 
-        email: decoded.email 
+      const user = await User.findOne({
+        _id: decoded.id,
+        email: decoded.email
       });
 
       if (!user) {
@@ -535,9 +547,9 @@ const authController = {
       }
 
       // Generate new tokens
-      const { 
-        accessToken: newAccessToken, 
-        refreshToken: newRefreshToken 
+      const {
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken
       } = generateTokens(user);
 
       // Store new refresh token
@@ -551,7 +563,7 @@ const authController = {
 
     } catch (error) {
       console.error('Token refresh error:', error);
-      
+
       if (error instanceof jwt.TokenExpiredError) {
         return res.status(401).json({
           success: false,
@@ -566,11 +578,11 @@ const authController = {
     }
   },
 
-   // Logout Controller (Invalidate Tokens)
-   logout: async (req: Request, res: Response): Promise<any> => {
+  // Logout Controller (Invalidate Tokens)
+  logout: async (req: Request, res: Response): Promise<any> => {
     try {
       const { refreshToken } = req.body;
-      const user = req.user as IUser; // Assuming middleware adds user to request
+      const user = req.user as IUser;
 
       if (!user) {
         return res.status(401).json({

@@ -13,7 +13,7 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: 'http://localhost:3000',  
+    origin: 'http://localhost:3000',
     credentials: true,
   })
 );
@@ -22,18 +22,13 @@ app.use(
 (async () => {
   try {
     // Call in configurations to the server
-    await connectDB(); // Call database connection function
-
-    configureCloudinary(); // Call Cloudinary connection function
+    await connectDB();
+    await configureCloudinary();
 
     const PORT = process.env.PORT || 4000;
 
     // Initiate Routes to the Server
     app.use('/auth', authRoutes);
-
-    console.log('ACCESS_TOKEN_SECRET:', process.env.ACCESS_TOKEN_SECRET);
-console.log('REFRESH_TOKEN_SECRET:', process.env.REFRESH_TOKEN_SECRET);
-
 
     app.listen(PORT, () => {
       console.log(chalk.blue(`Server is running on http://localhost:${PORT}`));

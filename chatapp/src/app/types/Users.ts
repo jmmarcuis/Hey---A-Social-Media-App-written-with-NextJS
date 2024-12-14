@@ -40,7 +40,7 @@ export interface User {
   lastLogin?: Date;
 }
 
-interface TokenPair {
+export interface TokenPair {
   accessToken: string;
   refreshToken: string;
 }
@@ -56,11 +56,9 @@ export interface AuthResponse {
     email: string;
     isVerified: boolean;
   };
-  token: string;
 }
 // Current authenticated user state
 export type AuthUser = Pick<User, 'id' | 'email' | 'username'> & {
-  token: string;
   verification: {
     isVerified: boolean;
     otp?: {
@@ -68,7 +66,8 @@ export type AuthUser = Pick<User, 'id' | 'email' | 'username'> & {
       expiresAt: Date;
     };
   };
+  tokens: TokenPair;
 
 
- 
+
 };

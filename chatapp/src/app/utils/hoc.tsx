@@ -1,52 +1,52 @@
 // src/app/utils/hoc.tsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '../hooks/useAuth';
 
-// Define the type for the HOC
 function withAuth<P extends object>(WrappedComponent: React.ComponentType<P>) {
   return function AuthProtectedComponent(props: P) {
     const router = useRouter();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const { getAccessToken, verifyToken, refreshAccessToken, clearTokens } = useAuth();
 
     useEffect(() => {
-      // Check for token in localStorage
-      const token = localStorage.getItem('token');
-
-      // If no token exists, redirect to login page
-      if (!token) {
-        console.log("[DEBUG]: Invalid or Expired token detected")
-        router.push('/login');
-        return;
-      }
-
-    
-      // Validate the token every time user access an protected page
-      const validateToken = async () => {
+      const checkAuth = async () => {
         try {
-          // Example token validation endpoint
-          const response = await fetch('http://localhost:4000/auth/verify-token', {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
+          const accessToken = getAccessToken();
+          if (!accessToken) {
+            throw new Error('No access token');
+          }
 
-          if (!response.ok) {
-            // Token is invalid, remove it and redirect to login
-            localStorage.removeItem('token');
-            router.push('/login');
+          // First try to verify the current token
+          try {
+            await verifyToken();
+            setIsAuthenticated(true);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (verifyError) {
+            // If verification fails, try to refresh the token
+            try {
+              await refreshAccessToken();
+              // After successful refresh, verify again
+              await verifyToken();
+              setIsAuthenticated(true);
+            } catch (refreshError) {
+              throw refreshError;
+            }
           }
         } catch (error) {
-          console.error('Token validation failed:', error);
-          localStorage.removeItem('token');
+          console.error('Authentication failed:', error);
+          clearTokens();
           router.push('/login');
         }
       };
 
-      // Uncomment the following line if you want to validate the token on every protected route access
-      validateToken();
-    }, [router]);
+      checkAuth();
+    }, [getAccessToken, verifyToken, refreshAccessToken, clearTokens, router]);
 
-    // Render the wrapped component
+    if (!isAuthenticated) {
+      return null; // Or a loading spinner
+    }
+
     return <WrappedComponent {...props} />;
   };
 }

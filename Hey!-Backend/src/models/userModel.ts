@@ -15,6 +15,7 @@ interface Verification {
     expiresAt: Date | null;
   };
 }
+
 interface Profile {
   firstName?: string;
   lastName?: string;

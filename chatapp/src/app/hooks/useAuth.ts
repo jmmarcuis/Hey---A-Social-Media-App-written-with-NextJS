@@ -4,20 +4,13 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { loginSchema, registerSchema, otpVerificationSchema, LoginPayload, RegisterPayload, OtpVerificationPayload } from '../validators/authValidation';
-import { AuthUser, AuthResponse } from '../types/Users';
+import { AuthUser, AuthResponse, TokenPair } from '../types/Users';
 import { z } from 'zod';
-
-// Define token interface
-interface TokenPair {
-    accessToken: string;
-    refreshToken: string;
-}
 
 export function useAuth() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-
 
     // Centralized token management
     const getAccessToken = useCallback(() => {
@@ -37,6 +30,7 @@ export function useAuth() {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
     }, []);
+
 
     // Token Refresh Utility
     const refreshAccessToken = async () => {
@@ -78,23 +72,23 @@ export function useAuth() {
         async error => {
             const originalRequest = error.config;
 
-            // If token is expired and we haven't tried to refresh yet
             if (error.response?.status === 401 && !originalRequest._retry) {
                 originalRequest._retry = true;
                 try {
                     const newAccessToken = await refreshAccessToken();
                     originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
                     return authAxios(originalRequest);
-                } catch {
-                    return Promise.reject(error);
+                } catch (refreshError) {
+                    clearTokens();
+                    router.push('/login');
+                    return Promise.reject(refreshError);
                 }
             }
             return Promise.reject(error);
         }
     );
 
-
-      // Register Hook
+    // Register Hook
     const register = async (username: string, email: string, password: string) => {
         try {
             setError(null);
@@ -121,7 +115,7 @@ export function useAuth() {
                 email: response.data.user.email,
                 username: response.data.user.username,
                 verification: response.data.user.verification,
-                token: response.data.token
+                tokens: response.data.tokens
             };
 
             setUser(authUser);
@@ -162,9 +156,9 @@ export function useAuth() {
 
             const { user: verifiedUser } = response.data;
 
-            setUser(prevUser => prevUser ? { 
-                ...prevUser, 
-                verification: verifiedUser.verification 
+            setUser(prevUser => prevUser ? {
+                ...prevUser,
+                verification: verifiedUser.verification
             } : null);
 
             router.push("/completeProfile")
@@ -234,66 +228,92 @@ export function useAuth() {
         }
     };
 
-    // Login Hook
     const login = async (email: string, password: string) => {
         try {
-            setError(null);
+            setError(null); // Clear any existing errors
             const loginData: LoginPayload = { email, password };
 
-            // Zod automatically validates the types and values
+            // Validate input with Zod
             loginSchema.parse(loginData);
 
-            const response = await axios.post<AuthResponse>(
-                'http://localhost:4000/auth/login',
-                loginData
-            );
+            // Make the login request
+            const response = await authAxios.post<{ success: boolean; message: string; tokens: TokenPair; user: AuthUser }>('http://localhost:4000/auth/login', loginData);
 
-            const { message, token, user: responseUser } = response.data;
+            const { message, tokens, user } = response.data;
 
-            const authUser: AuthUser = {
-                id: responseUser.id,
-                email: responseUser.email,
-                username: responseUser.username,
-                token,
-                verification: responseUser.verification
-            };
+            // Update local state and storage
+            setTokens(tokens);
+            setUser(user);
 
-            localStorage.setItem('token', token);
-            await router.push('/home');
+            console.log(`[INFO] Login successful: ${message}`);
+            router.push('/home'); // Redirect to home page
 
-
-            console.log(message);
-
-            router.push('/home');
-
-            return authUser;
+            return user; // Return the authenticated user object
         } catch (error) {
+            // Handle validation errors from Zod
             if (error instanceof z.ZodError) {
                 const errorMessage = error.errors[0].message;
                 setError(errorMessage);
+                console.error(`[ERROR] Validation failed: ${errorMessage}`);
                 throw new Error(errorMessage);
             }
+
+            // Handle Axios errors
             if (axios.isAxiosError(error)) {
                 const errorMessage = error.response?.data?.message || 'Login failed';
                 setError(errorMessage);
+                console.error(`[ERROR] Axios error: ${errorMessage}`);
                 throw new Error(errorMessage);
             }
+
+            // Fallback for unexpected errors
+            console.error('[ERROR] Unexpected error:', error);
             throw error;
         }
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        setUser(null);
-        router.push('/login');
+    // Logout method
+    const logout = async () => {
+        try {
+            const refreshToken = getRefreshToken();
+            if (refreshToken) {
+                await authAxios.post('http://localhost:4000/auth/logout', { refreshToken });
+            }
+            clearTokens();
+            setUser(null);
+            router.push('/login');
+        } catch (error) {
+            console.error('Logout failed', error);
+            clearTokens();
+            setUser(null);
+            router.push('/login');
+        }
+    };
+
+    // Verify Token
+    const verifyToken = async () => {
+        try {
+            const accessToken = getAccessToken();
+            if (!accessToken) throw new Error('No access token available');
+
+            const response = await axios.get('http://localhost:4000/auth/verify-token', {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            });
+
+            return response.data.user;
+        } catch (error) {
+            throw error;
+        }
     };
 
     return {
         user,
         register,
-        verify,
+        verify, refreshAccessToken, getAccessToken, clearTokens,
         resendOTP,
-        cancelVerification,
+        cancelVerification, verifyToken,
         login,
         logout,
         error

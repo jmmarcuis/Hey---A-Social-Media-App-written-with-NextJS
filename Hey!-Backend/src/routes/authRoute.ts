@@ -4,8 +4,6 @@ import AuthValidator from '../validation/authValidator.js';
 import authController from '../controller/authController.js';
 import { 
     authMiddleware, 
-    verifiedUserMiddleware, 
-    activeUserMiddleware 
   } from '../middleware/authMiddleware.js';
 
 const router = Router();
@@ -20,7 +18,7 @@ router.post('/resend-otp', validateData(AuthValidator.ResendOTPSchema),   authMi
 
 // Authentication
 router.post('/login', validateData(AuthValidator.LoginSchema), authController.login);
-router.get('/verify-token', authController.verifyToken); 
+router.post('/logout', authController.logout);
 
 // Token Related API
 router.post('/refresh-token', authController.refreshToken);

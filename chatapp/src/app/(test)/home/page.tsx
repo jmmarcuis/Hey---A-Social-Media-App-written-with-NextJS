@@ -14,7 +14,7 @@ function Home() {
 
     return (
         <div className="h-screen flex items-center flex-col justify-center bg-white dark:bg-black">
-            <h1 className='my-3'>Hello if you are here that means that you have logged in successfully</h1>
+            <h1 className='my-3 text-black dark:text-white'>Hello if you are here that means that you have logged in successfully</h1>
             <button
                 onClick={handleLogout}
                 className="border-2 border-black dark:border-white p-2.5 px-5 rounded-lg transition duration-300 ease-in-out hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black text-black dark:text-white">
