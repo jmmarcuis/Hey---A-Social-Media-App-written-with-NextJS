@@ -2,6 +2,12 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 // Define interfaces for nested structures
+interface RefreshTokenSchema {
+  token: string;
+  createdAt: Date;
+  expiresAt: Date;
+}
+
 interface Verification {
   isVerified: boolean;
   otp: {
@@ -9,7 +15,6 @@ interface Verification {
     expiresAt: Date | null;
   };
 }
-
 interface Profile {
   firstName?: string;
   lastName?: string;
@@ -43,17 +48,28 @@ interface Stats {
 
 // Main User interface
 export interface IUser extends Document {
+  _id: mongoose.Types.ObjectId;
   username: string;
   email: string;
   password: string;
-  verification: Verification;
-  profile: Profile;
+  verification: {
+    isVerified: boolean;
+    otp: {
+      code: string | null; 
+      expiresAt: Date | null;
+    };
+  };
+
   social: Social;
   stats: Stats;
-  lastActive?: Date;
+  refreshTokens: RefreshTokenSchema[];
   registeredAt: Date;
   lastLogin?: Date;
+  lastActive?: Date;
+  profile?: any;
 }
+
+
 
 const UserSchema = new Schema<IUser>(
   {
@@ -88,8 +104,8 @@ const UserSchema = new Schema<IUser>(
         default: false,
       },
       otp: {
-        code: String,
-        expiresAt: Date,
+        code: { type: String , default: null },
+        expiresAt: { type: Date, default: null, },
       },
     },
     profile: {
@@ -103,7 +119,7 @@ const UserSchema = new Schema<IUser>(
       },
       bio: {
         type: String,
-        maxlength: 500,
+        maxlength: 300,
       },
       profilePicture: {
         type: String,
@@ -158,6 +174,11 @@ const UserSchema = new Schema<IUser>(
         default: 0,
       },
     },
+    refreshTokens: [{
+      token: { type: String },
+      createdAt: { type: Date, default: Date.now },
+      expiresAt: { type: Date }
+    }],
     lastActive: {
       type: Date,
     },

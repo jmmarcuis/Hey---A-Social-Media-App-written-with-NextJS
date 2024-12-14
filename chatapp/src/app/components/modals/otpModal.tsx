@@ -10,18 +10,22 @@ interface OTPModalProps {
     onClose: () => void;
     onVerify: (email: string, otp: string) => Promise<void>;
     email: string;
+    onCancel?: () => Promise<void>;
 }
 
-export default function OTPModal({ isOpen, onClose, onVerify, email }: OTPModalProps) {
+export default function OTPModal({
+    isOpen,
+    // onClose,
+    onVerify,
+    email,
+    onCancel
+}: OTPModalProps) {
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const [resendCooldown, setResendCooldown] = useState(0);
     const [resendError, setResendError] = useState<string | null>(null);
     const [verificationError, setVerificationError] = useState<string | null>(null);
 
-    const { resendOTP, cancelVerification } = useAuth();
-
     const {
- 
         handleSubmit,
         setValue,
         watch,
@@ -35,12 +39,10 @@ export default function OTPModal({ isOpen, onClose, onVerify, email }: OTPModalP
         }
     });
 
-    useEffect(() => {
-        if (isOpen) {
-            console.log('Email in OTPModal:', email);
-        }
-    }, [isOpen, email]);
+    // Import resendOTP from useAuth hook
+    const { resendOTP } = useAuth();
 
+    // Reset form and errors when modal opens/closes
     useEffect(() => {
         if (!isOpen) {
             reset();
@@ -49,6 +51,7 @@ export default function OTPModal({ isOpen, onClose, onVerify, email }: OTPModalP
         }
     }, [isOpen, reset]);
 
+    // Cooldown timer for resend
     useEffect(() => {
         let timer: NodeJS.Timeout;
         if (resendCooldown > 0) {
@@ -58,14 +61,6 @@ export default function OTPModal({ isOpen, onClose, onVerify, email }: OTPModalP
         }
         return () => clearInterval(timer);
     }, [resendCooldown]);
-
-    // Debug watcher for form values
-    useEffect(() => {
-        const subscription = watch((value) => {
-            console.log('Form values:', value);
-        });
-        return () => subscription.unsubscribe();
-    }, [watch]);
 
     const handleInputChange = (index: number, value: string) => {
         if (!/^\d*$/.test(value)) return;
@@ -112,44 +107,42 @@ export default function OTPModal({ isOpen, onClose, onVerify, email }: OTPModalP
 
     const onSubmit = async (data: OtpVerificationPayload) => {
         try {
-          setVerificationError(null); // Clear previous errors
-          console.log('Submitting form with data:', data);
-          await onVerify(data.email, data.otp);
-          // Successful verification will close the modal in the parent component
+            setVerificationError(null);
+            await onVerify(email, data.otp);
         } catch (error) {
-          // Comprehensive error handling
-          const errorMessage = error instanceof Error
-            ? error.message
-            : 'OTP verification failed. Please try again.';
-          
-          // Set the error message to be displayed in the modal
-          setVerificationError(errorMessage);
+            const errorMessage = error instanceof Error
+                ? error.message
+                : 'OTP verification failed. Please try again.';
+
+            setVerificationError(errorMessage);
         }
-      };
+    };
 
     if (!isOpen) return null;
 
+    // Resend OTP Handler
     const handleResendOTP = async () => {
         if (resendCooldown > 0) return;
+
+        // Optimistically set the cooldown before making the API call
+        setResendCooldown(60); // 60 seconds cooldown
 
         try {
             setResendError(null);
             await resendOTP(email);
-            setResendCooldown(60);
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
-            setResendError('Failed to resend OTP. Please try again.');
+            // If there's an error, reset cooldown to 0 for retry
+            setResendCooldown(0);
+
+            const errorMessage = error instanceof Error
+                ? error.message
+                : 'Failed to resend OTP. Please try again.';
+            setResendError(errorMessage);
         }
     };
 
-    const handleCancelVerification = async () => {
-        try {
-            await cancelVerification(email);
-            onClose(); // Close modal when user cancels
-        } catch (error) {
-            console.error('Cancellation failed:', error);
-        }
-    };
+
+
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
@@ -163,7 +156,7 @@ export default function OTPModal({ isOpen, onClose, onVerify, email }: OTPModalP
                 </p>
 
                 <form onSubmit={handleSubmit(onSubmit)}>
-                
+
                     <div className="flex gap-2 mb-6 justify-center" onPaste={handlePaste}>
                         {[0, 1, 2, 3, 4, 5].map((index) => (
                             <input
@@ -207,7 +200,7 @@ export default function OTPModal({ isOpen, onClose, onVerify, email }: OTPModalP
 
                         <button
                             type="button"
-                            onClick={handleCancelVerification}
+                            onClick={onCancel}
                             disabled={isSubmitting}
                             className="flex-1 border border-gray-700 text-black py-2 rounded-md 
                                      hover:bg-black hover:text-white transition-colors 
@@ -237,6 +230,12 @@ export default function OTPModal({ isOpen, onClose, onVerify, email }: OTPModalP
                         {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend'}
                     </button>
                 </p>
+                {resendError && (
+                    <p className="text-red-500 text-sm text-center mt-2">
+                        {resendError}
+                    </p>
+                )}
+
             </div>
         </div>
     );

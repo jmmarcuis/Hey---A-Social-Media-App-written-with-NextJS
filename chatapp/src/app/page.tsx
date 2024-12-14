@@ -5,7 +5,7 @@ import { Icon } from '@iconify/react';
 
 export default function Home() {
   return (
-    <div className="min-h-screen dark:bg-black">
+    <div className="min-h-screen bg-white dark:bg-black">
       <div className="h-screen flex items-center justify-center flex-col gap-y-3 bg-white dark:bg-black">
         <h2 className="text-2xl text-black dark:text-white">
           Hello, this is a chat app made by{" "}

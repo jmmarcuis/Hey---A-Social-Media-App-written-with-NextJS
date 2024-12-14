@@ -28,6 +28,7 @@ export const registerSchema = z.object({
   message: "Passwords don't match",
   path: ["confirmPassword"],  
 });
+ 
 
 // OTP validation schema
 export const otpVerificationSchema = z.object({

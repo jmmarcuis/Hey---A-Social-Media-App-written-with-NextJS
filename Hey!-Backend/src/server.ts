@@ -31,6 +31,10 @@ app.use(
     // Initiate Routes to the Server
     app.use('/auth', authRoutes);
 
+    console.log('ACCESS_TOKEN_SECRET:', process.env.ACCESS_TOKEN_SECRET);
+console.log('REFRESH_TOKEN_SECRET:', process.env.REFRESH_TOKEN_SECRET);
+
+
     app.listen(PORT, () => {
       console.log(chalk.blue(`Server is running on http://localhost:${PORT}`));
     });
