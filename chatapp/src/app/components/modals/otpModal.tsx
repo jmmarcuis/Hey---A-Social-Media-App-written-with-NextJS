@@ -141,9 +141,6 @@ export default function OTPModal({
         }
     };
 
-
-
-
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white dark:bg-white p-8 rounded-lg max-w-md w-full mx-4">

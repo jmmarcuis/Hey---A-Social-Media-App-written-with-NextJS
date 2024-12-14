@@ -39,7 +39,7 @@ export default function Login() {
       <div className="flex h-screen flex-col items-center justify-center">
         <div className="w-full max-w-md border-customGray border-2 rounded-lg p-8">
           <h1 className="text-2xl font-semibold text-black dark:text-white mb-2">Login</h1>
-          <p className="text-gray-400 mb-2">
+          <p className="text-black dark:text-white mb-2">
             Enter your email below to login to your account
           </p>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -47,25 +47,30 @@ export default function Login() {
 
             {/* Email field */}
             <div>
-              <label htmlFor="email" className="block text-black dark:text-white mb-2">
+              <label
+                htmlFor="email"
+                className={`${errors.email ? 'text-red-500' : 'text-black dark:text-white'} block e mb-1`}
+              >
                 Email
               </label>
               <input
                 type="email"
                 id="email"
                 {...register("email")}
-                className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.email ? 'border-red-500' : 'border-customGray'
-                  }`}
+                className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.email ? 'border-red-500' : 'border-customGray'}`}
               />
               {errors.email && (
                 <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
               )}
             </div>
 
+
             {/* Password field */}
             <div className="relative">
               <div className="flex justify-between mb-2">
-                <label htmlFor="password" className="block text-black dark:text-white">
+                <label htmlFor="password" 
+                className={`${errors.password ? 'text-red-500' : 'text-black dark:text-white'} block mb-1`}
+                >
                   Password
                 </label>
                 <Link href="/forgot-password" className="text-black dark:text-white underline">

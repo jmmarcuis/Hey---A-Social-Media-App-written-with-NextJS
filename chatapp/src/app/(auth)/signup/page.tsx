@@ -8,8 +8,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { registerSchema, RegisterPayload } from '@/app/validators/authValidation';
 import OTPModal from '@/app/components/modals/otpModal';
+import { useRouter } from 'next/navigation';
 
 export default function Signup() {
+  const router = useRouter();
+
   // State for password visibility
   const [showPassword, setShowPassword] = useState({
     password: false,
@@ -34,11 +37,28 @@ export default function Signup() {
     formState: { errors, isSubmitting },
     reset,
     getValues,
-
   } = useForm<RegisterPayload>({
     resolver: zodResolver(registerSchema),
     mode: 'onBlur',
   });
+
+  // State and effect to manage OTP verification persistence
+  const [registrationEmail, setRegistrationEmail] = useState<string | null>(null);
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
+
+  // Check for persistent registration state on component mount
+  useEffect(() => {
+    const persistedRegistrationData = localStorage.getItem('registrationData');
+    
+    if (persistedRegistrationData) {
+      const { email, isAwaitingVerification } = JSON.parse(persistedRegistrationData);
+      
+      if (isAwaitingVerification) {
+        setRegistrationEmail(email);
+        setIsOTPModalOpen(true);
+      }
+    }
+  }, []);
 
   // Persistent form data in sessionStorage
   useEffect(() => {
@@ -55,10 +75,6 @@ export default function Signup() {
     sessionStorage.setItem('registrationFormData', JSON.stringify(currentValues));
   };
 
-  // OTP Modal State
-  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
-  const [registrationEmail, setRegistrationEmail] = useState<string | null>(null);
-
   // Registration Submission Handler
   const onSubmit = async () => {
     const data = getValues();
@@ -67,11 +83,17 @@ export default function Signup() {
       sessionStorage.removeItem('registrationFormData');
 
       // Register user
-       await registerUser(data.username, data.email, data.password);
-      
+      await registerUser(data.username, data.email, data.password);
+
+      // Persist registration data
+      localStorage.setItem('registrationData', JSON.stringify({
+        email: data.email,
+        isAwaitingVerification: true
+      }));
+
       // Set email for OTP verification
       setRegistrationEmail(data.email);
-      
+
       // Open OTP Modal
       setIsOTPModalOpen(true);
     } catch (error) {
@@ -83,25 +105,31 @@ export default function Signup() {
   const handleVerification = useCallback(async (email: string, otp: string) => {
     try {
       await verify(email, otp);
-      
-      // Close OTP Modal on successful verification
-      setIsOTPModalOpen(false);
-      
+
+      // Clear persistent registration data
+      localStorage.removeItem('registrationData');
+
+      // Redirect to login
+      router.push('/login');
+
     } catch (error) {
       console.error('Verification failed:', error);
       throw error;
     }
-  }, [verify]);
+  }, [verify, router]);
 
   // Cancel Verification Handler
   const handleCancelVerification = useCallback(async () => {
     if (registrationEmail) {
       try {
         await cancelVerification(registrationEmail);
-        
+
+        // Clear persistent registration data
+        localStorage.removeItem('registrationData');
+
         // Close OTP Modal
         setIsOTPModalOpen(false);
-        
+
         // Reset email
         setRegistrationEmail(null);
       } catch (error) {
@@ -122,7 +150,8 @@ export default function Signup() {
         <form onSubmit={handleSubmit(onSubmit)} onChange={handleFormChange} className="space-y-1">
           {/* Username Field */}
           <div>
-            <label htmlFor="username" className="block text-black dark:text-white mb-2">
+            <label htmlFor="username" className={`${errors.username ? 'text-red-500' : 'text-black dark:text-white'} block mb-1`}
+            >
               Username
             </label>
             <input
@@ -135,9 +164,16 @@ export default function Signup() {
 
           </div>
 
+
+          {errors.username && (
+            <p className="text-red-500 text-sm mt-1"> X {errors.username.message}</p>
+          )}
+
+
           {/* Email field */}
           <div>
-            <label htmlFor="email" className="block text-black dark:text-white mb-1">
+            <label htmlFor="email" className={`${errors.email ? 'text-red-500' : 'text-black dark:text-white'} block mb-1`}
+            >
               Email
             </label>
             <input
@@ -149,9 +185,15 @@ export default function Signup() {
             />
           </div>
 
+          {errors.email && (
+            <p className="text-red-500 text-sm mt-1"> X {errors.email.message}</p>
+          )}
+
+
           {/* Password field */}
           <div className="relative">
-            <label htmlFor="password" className="block text-black dark:text-white mb-1">
+            <label htmlFor="password" className={`${errors.password ? 'text-red-500' : 'text-black dark:text-white'} block mb-1`}
+            >
               Password
             </label>
             <div className="relative">
@@ -173,9 +215,14 @@ export default function Signup() {
 
           </div>
 
+          {errors.password && (
+            <p className="text-red-500 text-sm mt-1"> X {errors.password.message}</p>
+          )}
+
           {/* Confirm Password Field */}
           <div className="relative">
-            <label htmlFor="confirmPassword" className="block text-black dark:text-white mb-2">
+            <label htmlFor="confirmPassword" className={`${errors.confirmPassword ? 'text-red-500' : 'text-black dark:text-white'} block mb-1`}
+            >
               Confirm Password
             </label>
             <div className="relative">
@@ -195,37 +242,31 @@ export default function Signup() {
               />
             </div>
 
+
           </div>
 
-          {errors.email && (
-            <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>
-          )}
-
-          {errors.username && (
-            <p className="text-red-500 text-sm mt-1">{errors.username.message}</p>
-          )}
-          {errors.password && (
-            <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-          )}
-
           {errors.confirmPassword && (
-            <p className="text-red-500 text-sm mt-1">{errors.confirmPassword.message}</p>
+            <p className="text-red-500 text-sm mt-1"> X {errors.confirmPassword.message}</p>
           )}
+          <div>
 
-          {authError && (
-            <p className="text-red-500 text-sm mt-1">{authError}</p>
-          )}
 
+          </div>
           {/* Register button */}
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full text-white bg-black border-black border dark:bg-white dark:text-black rounded-md p-3 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full text-white bg-black border-black border dark:bg-white dark:text-black rounded-md p-3 font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed "
           >
             {isSubmitting ? 'Registering...' : 'Register'}
           </button>
 
         </form>
+
+
+        {authError && (
+          <p className="text-red-500 text-sm mt-1">{authError}</p>
+        )}
 
         {/* Login link */}
         <div className="mt-2 text-center text-black dark:text-white">
@@ -234,11 +275,11 @@ export default function Signup() {
           </Link></p>
 
         </div>
-        {/* // Update the OTPModal rendering */}
-        {isOTPModalOpen && registrationEmail && (
+         {/* OTP Modal */}
+         {isOTPModalOpen && registrationEmail && (
           <OTPModal
-            isOpen={isOTPModalOpen}
-            onClose={() => setIsOTPModalOpen(false)}
+            isOpen={true}
+            onClose={() => {}}  // Prevent closing
             onVerify={handleVerification}
             onCancel={handleCancelVerification}
             email={registrationEmail}
