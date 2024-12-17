@@ -53,7 +53,7 @@ export default function Stepper() {
                             >
                                 {/* Step Icon */}
                                 <div
-                                    className={`rounded-lg ${isPastStep
+                                    className={`rounded-full ${isPastStep
                                             ? "bg-green-500 dark:bg-white"
                                             : isCurrentStep
                                                 ? "bg-blue-500 dark:bg-white"
