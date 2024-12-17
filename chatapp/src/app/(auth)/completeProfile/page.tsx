@@ -7,7 +7,7 @@ function CompleteProfile() {
 
     return (
         <div className="h-screen flex items-center flex-col justify-center bg-white dark:bg-black">
-            <h1 className='my-3'>Hello if you are here that means that you have logged in successfully</h1>
+            <h1 className='my-3 text-black dark:text-white'>Hello if you are here that means that you have logged in successfully</h1>
 
             <ThemeToggle />
         </div>

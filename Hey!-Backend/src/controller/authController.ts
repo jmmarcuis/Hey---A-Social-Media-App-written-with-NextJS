@@ -13,8 +13,8 @@ import chalk from 'chalk';
 const TOKEN_CONFIG = {
   ACCESS_TOKEN_SECRET: process.env.JWT_ACCESS_TOKEN_SECRET as string,
   REFRESH_TOKEN_SECRET: process.env.JWT_REFRESH_TOKEN_SECRET as string,
-  ACCESS_TOKEN_EXPIRY: '15m',  // Short-lived access token
-  REFRESH_TOKEN_EXPIRY: '7d',  // Longer-lived refresh token
+  ACCESS_TOKEN_EXPIRY: '15m',
+  REFRESH_TOKEN_EXPIRY: '7d',
 };
 
 // Token Generation Interfaces
@@ -23,6 +23,7 @@ interface TokenPayload {
   email: string;
   type: 'access' | 'refresh';
 }
+
 
 interface AuthTokens {
   accessToken: string;
@@ -474,6 +475,7 @@ const authController = {
           isVerified: user.verification.isVerified,
         },
       });
+      // ! IF THIS SHOWS UP YOU ARE STUPID AND RETARDED 
     } catch (error) {
       console.error('Token verification error:', error);
 
@@ -561,6 +563,7 @@ const authController = {
         refreshToken: newRefreshToken
       });
 
+      // ! IF THIS SHOWS UP YOU ARE STUPID AND RETARDED 
     } catch (error) {
       console.error('Token refresh error:', error);
 
