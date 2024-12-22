@@ -33,7 +33,7 @@ export default function PersonalInfoPage() {
 
 
     return (
-        <div className="max-w-md mx-auto -mt-4">
+        <div className="max-w-md mx-auto -mt-4 ">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 Tell us more about yourself
             </h1>

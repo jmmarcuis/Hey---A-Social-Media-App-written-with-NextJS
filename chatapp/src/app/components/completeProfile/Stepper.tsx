@@ -1,7 +1,7 @@
 "use client";
 import { usePathname } from "next/navigation";
 
-export default function Stepper() {
+const Stepper = () => {
     // Step definitions
     const steps = [
         {
@@ -11,81 +11,87 @@ export default function Stepper() {
         {
             id: "customization",
             label: "Customization",
-
         },
         {
             id: "confirmdetails",
-            label: "Confirm",
-
+            label: "Confirm Details",
         },
     ];
 
     // Get the current path
     const currentPath = usePathname();
+    
+    // Find the current step index based on the path
+    const currentStepIndex = steps.findIndex((step) => currentPath.includes(step.id));
 
-    // Find the current step index
-    const currentStepIndex = steps.findIndex(
-        (step) => currentPath.split("/").pop() === step.id
-    );
+    // Helper function to determine if a step is completed
+    const isStepCompleted = (index: number) => {
+        return index < currentStepIndex;
+    };
 
     return (
-        <ol className="overflow-hidden space-y-8">
-            {steps.map((step, index) => {
-                const isCurrentStep = index === currentStepIndex;
-                const isPastStep = index < currentStepIndex;
-
-                return (
-                    <li
-                        key={step.id}
-                        className={`relative flex-1 ${index < steps.length - 1
-                                ? "after:content-[''] after:w-0.5 after:h-full after:bg-gray-200 dark:after:bg-gray-700 after:inline-block after:absolute after:-bottom-12 after:left-1/2"
-                                : ""
-                            }`}
-                    >
-                        <div className="flex items-center justify-center w-54 mx-auto">
+        <div className="w-full mb-10">
+            <div className="flex justify-between">
+                {steps.map((step, index) => (
+                    <div key={step.id} className="flex items-center">
+                        <div className="flex flex-col border-gray-900">
                             <div
-                                className={`flex items-center gap-3.5 p-3.5 rounded-xl relative z-10 border w-full ${isPastStep
-                                        ? "bg-green-50 dark:bg-gray-800 border-green-300 border-2 dark:border-gray-700"
-                                        : isCurrentStep
-                                            ? "bg-blue-100 border-blue-400 border-2"
-                                            : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800"
-                                    }`}
+                                className={`
+                                    w-12 h-12 rounded-full flex items-center justify-center
+                                    border-2 font-medium text-sm mb-2
+                                    ${isStepCompleted(index)
+                                        ? 'border-green-500 bg-green-500 text-white'
+                                        : index === currentStepIndex
+                                            ? 'border-blue-600 bg-blue-600 text-white dark:border-white dark:bg-white dark:text-black'
+                                            : 'border-gray-300 text-gray-400 dark:border-gray-600'}
+                                `}
                             >
-                                {/* Step Icon */}
-                                <div
-                                    className={`rounded-full ${isPastStep
-                                            ? "bg-green-500 dark:bg-white"
-                                            : isCurrentStep
-                                                ? "bg-blue-500 dark:bg-white"
-                                                : "bg-gray-200 dark:bg-gray-700"
-                                        } flex items-center justify-center`}
-                                >
-                                    <span
-                                        className={`p-3 ${isPastStep || isCurrentStep
-                                                ? "text-white dark:text-black"
-                                                : "text-gray-500 dark:text-gray-400"
-                                            }`}
-                                    >
-                                    </span>
-                                </div>
-
-                                {/* Step Details */}
-                                <div className="flex items-start justify-center flex-col">
-                                    <h6
-                                        className={`text-base font-semibold mb-0.5 ${isPastStep || isCurrentStep
-                                                ? "text-black dark:text-white"
-                                                : "text-gray-500 dark:text-gray-400"
-                                            }`}
-                                    >
-                                        {step.label}
-                                    </h6>
-
-                                </div>
+                                {isStepCompleted(index) ? (
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                ) : (
+                                    index + 1
+                                )}
+                            </div>
+                            <div>
+                                {/* Step number */}
+                                <span className="hidden sm:block text-xs text-black dark:text-white">
+                                    Step {index + 1}
+                                </span>
+                                
+                                {/* Step label */}
+                                <span className={`
+                                    hidden sm:block text-xs
+                                    ${isStepCompleted(index) || index === currentStepIndex
+                                        ? 'text-black dark:text-white'
+                                        : 'text-gray-400 dark:text-gray-500'}
+                                `}>
+                                    {step.label}
+                                </span>
+                                
+                                {/* Status label */}
+                                <span className={`
+                                    hidden sm:block text-xs font-semibold
+                                    ${isStepCompleted(index)
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : index === currentStepIndex
+                                            ? 'text-blue-800 dark:text-white'
+                                            : 'text-gray-400 dark:text-gray-500'}
+                                `}>
+                                    {isStepCompleted(index)
+                                        ? 'Completed'
+                                        : index === currentStepIndex
+                                            ? 'In Progress'
+                                            : 'Pending'}
+                                </span>
                             </div>
                         </div>
-                    </li>
-                );
-            })}
-        </ol>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
-}
+};
+
+export default Stepper;

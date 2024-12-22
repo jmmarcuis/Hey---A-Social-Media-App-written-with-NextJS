@@ -1,6 +1,8 @@
 "use client";
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
+
+// I am used to toggle between light and dark mode :)
 interface ThemeContextType {
   isDark: boolean;
   toggleTheme: () => void;
