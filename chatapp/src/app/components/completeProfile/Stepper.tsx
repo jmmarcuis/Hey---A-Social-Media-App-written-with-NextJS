@@ -30,7 +30,7 @@ const Stepper = () => {
     };
 
     return (
-        <div className="w-full mb-10">
+        <div className="max-w-md mx-auto mb-10">
             <div className="flex justify-between">
                 {steps.map((step, index) => (
                     <div key={step.id} className="flex items-center">

@@ -1,7 +1,7 @@
 "use client";
 import { useContext, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ProfileContext } from '@/app/contexts/completeProfileContext';// Adjust import path as needed
+import { ProfileContext } from '@/app/contexts/CompleteProfileContext';// Adjust import path as needed
 
 export default function CustomizeProfilePage() {
     const router = useRouter();
@@ -86,7 +86,7 @@ export default function CustomizeProfilePage() {
             }
 
             // Navigate to next page
-            router.push('/completeProfile/confirmProfile');
+            router.push('/completeprofile/confirmProfile');
         } catch (error) {
             // Handle upload errors
             console.error('Profile picture upload failed', error);
@@ -96,11 +96,11 @@ export default function CustomizeProfilePage() {
 
     // Go back function
     const goBack = () => {
-        router.push('/completeProfile/personalinfo');
+        router.push('/completeprofile/personalinfo');
     };
 
     return (
-        <div className="max-w-md mx-auto p-4 space-y-6">
+        <div className="max-w-md mx-auto mt-4 ">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
                 Customize Your Profile
             </h1>
