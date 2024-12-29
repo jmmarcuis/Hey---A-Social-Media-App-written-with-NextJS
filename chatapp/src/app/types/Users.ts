@@ -50,6 +50,21 @@ export interface AuthResponse {
   user: AuthUser;
 }
 
+export interface VerifiedResponse{
+  success: boolean;
+  userVerificationStatus:{
+  verification: {
+    isVerified: boolean;
+}};
+}
+
+export interface CompleteProfileResponse{
+  success:boolean;
+  userProfileStatus:{
+    isComplete:boolean;
+  }
+}
+
 export interface AuthUser {
   id: string;
   email: string;

@@ -1,29 +1,17 @@
 // src/hooks/useAuth.ts
 "use client"
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { loginSchema, registerSchema, otpVerificationSchema, LoginPayload, RegisterPayload, OtpVerificationPayload } from '../validators/authValidation';
-import { AuthUser, AuthResponse, Token } from '../types/Users';
+import { AuthUser, AuthResponse } from '../types/Users';
 import { z } from 'zod';
+import { tokenManager } from '../utils/tokenManager';
 
 export function useAuth() {
     const [user, setUser] = useState<AuthUser | null>(null);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
-
-    // Centralized token management
-    const getToken = useCallback(() => {
-        return localStorage.getItem("token");
-    }, []);
-
-    const setToken = (token: Token) => {
-        localStorage.setItem('token', token.token);
-    };
-
-    const clearToken = useCallback(() => {
-        localStorage.removeItem("token");
-    }, []);
 
 
     // Register Hook
@@ -50,7 +38,7 @@ export function useAuth() {
 
             // Store tokens
             console.log(`[INFO] Register successful: ${message}`);
-            setToken({ token: token });
+            tokenManager.setToken({ token });
             setUser(user);
 
             return response.data.user;
@@ -78,15 +66,21 @@ export function useAuth() {
                 otp
             };
 
+            const token = tokenManager.getToken();
+
+
             // Zod validation
             otpVerificationSchema.parse(verificationData);
 
-            const response = await axios.post('http://localhost:4000/auth/verify', verificationData);
+            const response = await axios.post('http://localhost:4000/auth/verify', verificationData,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                }
 
-            // Update tokens if returned
-            if (response.data.tokens) {
-                setToken(response.data.tokens);
-            }
+            );
+
 
             const { user: verifiedUser } = response.data;
 
@@ -95,7 +89,7 @@ export function useAuth() {
                 verification: verifiedUser.verification
             } : null);
 
-            router.push("/completeProfile")
+            router.push("/completeprofile/personalinfo")
 
             return response.data;
         } catch (error) {
@@ -119,13 +113,14 @@ export function useAuth() {
             throw new Error('Email is required');
         }
 
+        const token = tokenManager.getToken();
         try {
-            const response = await axios.post('http://localhost:4000/auth/resend-otp', { email });
+            const response = await axios.post('http://localhost:4000/auth/resend-otp', { email }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
 
-            // Update tokens if returned
-            if (response.data.tokens) {
-                setToken(response.data.tokens);
-            }
 
             return response.data;
         } catch (error) {
@@ -144,11 +139,17 @@ export function useAuth() {
             throw new Error('Email is required');
         }
 
-        try {
-            const response = await axios.post('http://localhost:4000/auth/verify/cancel', { email });
+        const token = tokenManager.getToken();
 
+
+        try {
+            const response = await axios.post('http://localhost:4000/auth/verify/cancel', { email }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
             // Clear tokens and user on cancellation
-            clearToken();
+            tokenManager.clearToken();
             setUser(null);
 
             return response.data;
@@ -178,7 +179,7 @@ export function useAuth() {
             // Make sure we're setting tokens correctly
             if (typeof token === 'string') {
                 console.log("Setting tokens:", token);
-                setToken({ token: token });
+                tokenManager.setToken({ token: token });
                 setUser(user);
                 console.log(`[INFO] Login successful: ${message}`);
 
@@ -186,7 +187,7 @@ export function useAuth() {
                 if (user.verification.isVerified) {
                     router.push("/home");
                 } else {
-                    router.push("/completeprofile");
+                    //  CALL IN THE VERIFICATION HOOK
                 }
 
                 return user;
@@ -213,20 +214,19 @@ export function useAuth() {
     // ! Will utilize a more robust session management in the future
     const logout = async () => {
 
-        clearToken();
+        tokenManager.clearToken();
         router.push('/login');
 
     };
 
-    
+
 
     return {
         user,
         register,
-        verify, getToken, clearToken,
+        verify,
         resendOTP,
         cancelVerification,
-        //  verifyToken,
         login,
         logout,
         error

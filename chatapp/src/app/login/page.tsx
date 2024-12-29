@@ -1,22 +1,24 @@
-// Login Page
 "use client"
 import Link from 'next/link';
 import ThemeToggle from '@/app/components/icons/ThemeToggle';
 import { Icon } from '@iconify/react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, LoginPayload } from "@/app/validators/authValidation";
+import OTPModal from '../components/modals/otpModal';
+import { useRouter } from 'next/navigation';
 
 export default function Login() {
-  // Show Password Function
+  // State management
   const [showPassword, setShowPassword] = useState(false);
-  const togglePassword = () => {
-    setShowPassword(!showPassword);
-  };
+  const [isOTPModalOpen, setIsOTPModalOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState('');
+  const router = useRouter();
 
-  const { login, error } = useAuth();
+  const { login, error, verify, cancelVerification } = useAuth();
+  
   const {
     register,
     handleSubmit,
@@ -25,12 +27,48 @@ export default function Login() {
     resolver: zodResolver(loginSchema),
   });
 
+  const togglePassword = () => {
+    setShowPassword(!showPassword);
+  };
+
   const onSubmit = async (data: LoginPayload) => {
     try {
-      // Call in the authorization hook with the form 
-      await login(data.email, data.password);
+      const user = await login(data.email, data.password);
+      // Store email for OTP verification
+      setUserEmail(data.email);
+      
+      // If user is not verified, show OTP modal
+      if (user && !user.verification.isVerified) {
+        setIsOTPModalOpen(true);
+      }
+      // If user is verified, login function will handle the redirect
     } catch (loginError) {
       console.error("Login failed", loginError);
+    }
+  };
+
+  // Handle OTP verification
+  const handleVerification = useCallback(async (email: string, otp: string) => {
+    try {
+      await verify(email, otp);
+      setIsOTPModalOpen(false);
+      // verify function will handle the redirect
+      router.push('/completeprofile/personalinfo');
+
+    } catch (error) {
+      console.error("Verification failed", error);
+      throw error; // Let the OTP modal handle the error display
+    }
+  }, [verify, router]);
+
+  // Handle cancellation of verification
+  const handleCancelVerification = async () => {
+    try {
+      await cancelVerification(userEmail);
+      setIsOTPModalOpen(false);
+    } catch (error) {
+      console.error("Cancellation failed", error);
+      throw error;
     }
   };
 
@@ -43,13 +81,11 @@ export default function Login() {
             Enter your email below to login to your account
           </p>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
-
             {/* Email field */}
             <div>
               <label
                 htmlFor="email"
-                className={`${errors.email ? 'text-red-500' : 'text-black dark:text-white'} block e mb-1`}
+                className={`${errors.email ? 'text-red-500' : 'text-black dark:text-white'} block mb-1`}
               >
                 Email
               </label>
@@ -64,12 +100,11 @@ export default function Login() {
               )}
             </div>
 
-
             {/* Password field */}
             <div className="relative">
               <div className="flex justify-between mb-2">
                 <label htmlFor="password" 
-                className={`${errors.password ? 'text-red-500' : 'text-black dark:text-white'} block mb-1`}
+                  className={`${errors.password ? 'text-red-500' : 'text-black dark:text-white'} block mb-1`}
                 >
                   Password
                 </label>
@@ -82,8 +117,7 @@ export default function Login() {
                   type={showPassword ? "text" : "password"}
                   id="password"
                   {...register("password")}
-                  className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.password ? 'border-red-500' : 'border-customGray'
-                    }`}
+                  className={`w-full p-3 dark:bg-black border rounded-md text-black dark:text-white focus:outline-none ${errors.password ? 'border-red-500' : 'border-customGray'}`}
                 />
                 <Icon
                   onClick={togglePassword}
@@ -115,7 +149,6 @@ export default function Login() {
               <Icon icon="ph:google-logo-bold" className="w-5 h-5" />
               <span>Login with Google</span>
             </button>
-
           </form>
 
           {/* Sign up link */}
@@ -128,6 +161,18 @@ export default function Login() {
         </div>
       </div>
       <ThemeToggle />
+
+      {/* OTP Modal */}
+      {isOTPModalOpen && userEmail && (
+      <OTPModal
+        isOpen={true}
+        onClose={() => {}}  // Prevent closing
+        onVerify={handleVerification}
+        onCancel={handleCancelVerification}
+        email={userEmail}
+      />
+      )
+      }
     </div>
   );
 }

@@ -1,32 +1,30 @@
+// hocs/withAuth.tsx
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "../hooks/useAuth";
-import Spinner from "../components/Spinner";
+import { useRouter } from "next/navigation";  // Changed from next/router
+ import Spinner from "../../components/Spinner";
+import { tokenManager } from "../tokenManager";
 
 function withAuth<P extends object>(WrappedComponent: React.ComponentType<P>) {
   return function AuthProtectedComponent(props: P) {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const { getToken, clearToken } = useAuth(); 
-
+ 
     useEffect(() => {
       const checkAuth = () => {
-        const token = getToken();
+        const token = tokenManager.getToken();
         if (token) {
           setIsAuthenticated(true);
         } else {
-          clearToken();
+          tokenManager.clearToken();
           router.push("/login");
         }
-
-        // Delay the loader by 3 seconds becasuse :3
         setTimeout(() => {
           setIsLoading(false);
         }, 3000);
       };
       checkAuth();
-    }, [getToken, clearToken, router]);
+    }, [ router]);
 
     if (isLoading) {
       return <Spinner />;

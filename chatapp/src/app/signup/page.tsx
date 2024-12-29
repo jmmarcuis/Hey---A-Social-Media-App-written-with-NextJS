@@ -110,7 +110,7 @@ export default function Signup() {
       localStorage.removeItem('registrationData');
 
       // Redirect to login
-      router.push('/login');
+      router.push('/completeprofile/personalinfo');
 
     } catch (error) {
       console.error('Verification failed:', error);

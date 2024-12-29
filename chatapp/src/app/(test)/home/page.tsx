@@ -2,8 +2,10 @@
 
 import ThemeToggle from '@/app/components/icons/ThemeToggle';
 import { useAuth } from '@/app/hooks/useAuth';
-import withAuth from '@/app/utils/hoc';
-
+import withAuth from '@/app/utils/hocs/withAuth';
+import withVerification from '@/app/utils/hocs/withVerification';
+import { composeHOCs } from '@/app/utils/composeHOCs';
+import withProfileComplete from '@/app/utils/hocs/withProfileComplete';
 function Home() {
     const { logout } = useAuth();  
 
@@ -25,4 +27,4 @@ function Home() {
     );
 }
 
-export default withAuth(Home); 
+export default composeHOCs(withVerification, withAuth, withProfileComplete)(Home);

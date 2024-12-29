@@ -285,13 +285,13 @@ const authController = {
       }
 
       // Check if email is verified
-      if (!user.verification.isVerified) {
-        return res.status(403).json({
-          success: false,
-          error_code: 'EMAIL_NOT_VERIFIED',
-          message: 'Email not verified. Please verify your email before logging in.',
-        });
-      }
+      // if (!user.verification.isVerified) {
+      //   return res.status(403).json({
+      //     success: false,
+      //     error_code: 'EMAIL_NOT_VERIFIED',
+      //     message: 'Email not verified. Please verify your email before logging in.',
+      //   });
+      // }
 
       // Compare passwords
       const isPasswordValid = await bcrypt.compare(password, user.password);

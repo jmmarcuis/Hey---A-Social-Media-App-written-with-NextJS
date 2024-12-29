@@ -11,6 +11,7 @@ interface Verification {
 }
 
 interface Profile {
+  isComplete:Boolean;
   firstName?: string;
   lastName?: string;
   bio?: string;
@@ -48,14 +49,14 @@ export interface IUser extends Document {
   email: string;
   password: string;
   verification: Verification;
-  profile: Profile;  
+  profile: Profile;
   social: Social;
   stats: Stats;
-   registeredAt: Date;
+  registeredAt: Date;
   lastLogin?: Date;
   lastActive?: Date;
 }
- 
+
 
 
 const UserSchema = new Schema<IUser>(
@@ -96,6 +97,10 @@ const UserSchema = new Schema<IUser>(
       },
     },
     profile: {
+      isComplete: {
+        type: Boolean,
+        default: false,
+      },
       firstName: {
         type: String,
         trim: true,
@@ -163,7 +168,7 @@ const UserSchema = new Schema<IUser>(
         default: 0,
       },
     },
- 
+
     lastActive: {
       type: Date,
     },
@@ -180,7 +185,7 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
- 
+
 UserSchema.index({ "profile.firstName": 1, "profile.lastName": 1 });
 UserSchema.index({ status: 1 });
 UserSchema.index({ "social.friends.status": 1 });
