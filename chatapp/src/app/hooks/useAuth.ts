@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import { loginSchema, registerSchema, otpVerificationSchema, LoginPayload, RegisterPayload, OtpVerificationPayload } from '../validators/authValidation';
-import { AuthUser, AuthResponse, TokenPair } from '../types/Users';
+import { AuthUser, AuthResponse, Token } from '../types/Users';
 import { z } from 'zod';
 
 export function useAuth() {
@@ -13,80 +13,18 @@ export function useAuth() {
     const router = useRouter();
 
     // Centralized token management
-    const getAccessToken = useCallback(() => {
-        return localStorage.getItem('accessToken');
+    const getToken = useCallback(() => {
+        return localStorage.getItem("token");
     }, []);
 
-    const getRefreshToken = useCallback(() => {
-        return localStorage.getItem('refreshToken');
-    }, []);
-
-    const setTokens = useCallback(({ accessToken, refreshToken }: TokenPair) => {
-        localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
-    }, []);
-
-    const clearTokens = useCallback(() => {
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-    }, []);
-
-
-    // Token Refresh Utility
-    const refreshAccessToken = async () => {
-        try {
-            const refreshToken = getRefreshToken();
-            if (!refreshToken) throw new Error('No refresh token available');
-
-            const response = await axios.post('http://localhost:4000/auth/refresh-token', {
-                refreshToken
-            });
-
-            const { accessToken, refreshToken: newRefreshToken } = response.data;
-            setTokens({ accessToken, refreshToken: newRefreshToken });
-
-            return accessToken;
-        } catch (error) {
-            // If refresh fails, logout user
-            clearTokens();
-            setUser(null);
-            router.push('/login');
-            throw error;
-        }
+    const setToken = (token: Token) => {
+        localStorage.setItem('token', token.token);
     };
-    // Axios instance with interceptor for token refresh
-    const authAxios = axios.create();
-    authAxios.interceptors.request.use(
-        config => {
-            const token = getAccessToken();
-            if (token) {
-                config.headers['Authorization'] = `Bearer ${token}`;
-            }
-            return config;
-        },
-        error => Promise.reject(error)
-    );
 
-    authAxios.interceptors.response.use(
-        response => response,
-        async error => {
-            const originalRequest = error.config;
+    const clearToken = useCallback(() => {
+        localStorage.removeItem("token");
+    }, []);
 
-            if (error.response?.status === 401 && !originalRequest._retry) {
-                originalRequest._retry = true;
-                try {
-                    const newAccessToken = await refreshAccessToken();
-                    originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-                    return authAxios(originalRequest);
-                } catch (refreshError) {
-                    clearTokens();
-                    router.push('/login');
-                    return Promise.reject(refreshError);
-                }
-            }
-            return Promise.reject(error);
-        }
-    );
 
     // Register Hook
     const register = async (username: string, email: string, password: string) => {
@@ -107,20 +45,16 @@ export function useAuth() {
                 registerData
             );
 
+            const { token, user, message } = response.data;
+
+
             // Store tokens
-            setTokens(response.data.tokens);
+            console.log(`[INFO] Register successful: ${message}`);
+            setToken({ token: token });
+            setUser(user);
 
-            const authUser: AuthUser = {
-                id: response.data.user.id,
-                email: response.data.user.email,
-                username: response.data.user.username,
-                verification: response.data.user.verification,
-                tokens: response.data.tokens
-            };
+            return response.data.user;
 
-            setUser(authUser);
-
-            return authUser;
         } catch (error) {
             if (error instanceof z.ZodError) {
                 const errorMessage = error.errors[0].message;
@@ -147,11 +81,11 @@ export function useAuth() {
             // Zod validation
             otpVerificationSchema.parse(verificationData);
 
-            const response = await authAxios.post('http://localhost:4000/auth/verify', verificationData);
+            const response = await axios.post('http://localhost:4000/auth/verify', verificationData);
 
             // Update tokens if returned
             if (response.data.tokens) {
-                setTokens(response.data.tokens);
+                setToken(response.data.tokens);
             }
 
             const { user: verifiedUser } = response.data;
@@ -186,11 +120,11 @@ export function useAuth() {
         }
 
         try {
-            const response = await authAxios.post('http://localhost:4000/auth/resend-otp', { email });
+            const response = await axios.post('http://localhost:4000/auth/resend-otp', { email });
 
             // Update tokens if returned
             if (response.data.tokens) {
-                setTokens(response.data.tokens);
+                setToken(response.data.tokens);
             }
 
             return response.data;
@@ -211,10 +145,10 @@ export function useAuth() {
         }
 
         try {
-            const response = await authAxios.post('http://localhost:4000/auth/verify/cancel', { email });
+            const response = await axios.post('http://localhost:4000/auth/verify/cancel', { email });
 
             // Clear tokens and user on cancellation
-            clearTokens();
+            clearToken();
             setUser(null);
 
             return response.data;
@@ -230,90 +164,69 @@ export function useAuth() {
 
     const login = async (email: string, password: string) => {
         try {
-            setError(null); // Clear any existing errors
+            setError(null);
             const loginData: LoginPayload = { email, password };
+            await loginSchema.parse(loginData);
 
-            // Validate input with Zod
-            loginSchema.parse(loginData);
+            const response = await axios.post<AuthResponse>(
+                'http://localhost:4000/auth/login',
+                loginData
+            );
 
-            // Make the login request
-            const response = await authAxios.post<{ success: boolean; message: string; tokens: TokenPair; user: AuthUser }>('http://localhost:4000/auth/login', loginData);
+            const { token, user, message } = response.data;
 
-            const { message, tokens, user } = response.data;
+            // Make sure we're setting tokens correctly
+            if (typeof token === 'string') {
+                console.log("Setting tokens:", token);
+                setToken({ token: token });
+                setUser(user);
+                console.log(`[INFO] Login successful: ${message}`);
 
-            // Update local state and storage
-            setTokens(tokens);
-            setUser(user);
+                // Check verification status and redirect
+                if (user.verification.isVerified) {
+                    router.push("/home");
+                } else {
+                    router.push("/completeprofile");
+                }
 
-            console.log(`[INFO] Login successful: ${message}`);
-            router.push('/home'); // Redirect to home page
-
-            return user; // Return the authenticated user object
+                return user;
+            } else {
+                console.error("Unexpected token format:", token);
+                throw new Error('Invalid token received from server');
+            }
         } catch (error) {
-            // Handle validation errors from Zod
             if (error instanceof z.ZodError) {
                 const errorMessage = error.errors[0].message;
                 setError(errorMessage);
-                console.error(`[ERROR] Validation failed: ${errorMessage}`);
                 throw new Error(errorMessage);
             }
-
-            // Handle Axios errors
             if (axios.isAxiosError(error)) {
                 const errorMessage = error.response?.data?.message || 'Login failed';
                 setError(errorMessage);
-                console.error(`[ERROR] Axios error: ${errorMessage}`);
                 throw new Error(errorMessage);
             }
-
-            // Fallback for unexpected errors
-            console.error('[ERROR] Unexpected error:', error);
             throw error;
         }
     };
 
-    // Logout method
+    // Logout Method
+    // ! Will utilize a more robust session management in the future
     const logout = async () => {
-        try {
-            const refreshToken = getRefreshToken();
-            if (refreshToken) {
-                await authAxios.post('http://localhost:4000/auth/logout', { refreshToken });
-            }
-            clearTokens();
-            setUser(null);
-            router.push('/login');
-        } catch (error) {
-            console.error('Logout failed', error);
-            clearTokens();
-            setUser(null);
-            router.push('/login');
-        }
+
+        clearToken();
+        router.push('/login');
+
     };
 
-    // Verify Token
-    const verifyToken = async () => {
-        try {
-            const accessToken = getAccessToken();
-            if (!accessToken) throw new Error('No access token available');
-
-            const response = await axios.get('http://localhost:4000/auth/verify-token', {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            });
-
-            return response.data.user;
-        } catch (error) {
-            throw error;
-        }
-    };
+    
 
     return {
         user,
         register,
-        verify, refreshAccessToken, getAccessToken, clearTokens,
+        verify, getToken, clearToken,
         resendOTP,
-        cancelVerification, verifyToken,
+        cancelVerification,
+        //  verifyToken,
         login,
         logout,
         error

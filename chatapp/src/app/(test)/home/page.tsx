@@ -25,4 +25,4 @@ function Home() {
     );
 }
 
-export default withAuth(Home); // Wrap the component with the HOC
+export default withAuth(Home); 

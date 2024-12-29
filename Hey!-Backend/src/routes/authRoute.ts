@@ -18,11 +18,12 @@ router.post('/resend-otp', validateData(AuthValidator.ResendOTPSchema),   authMi
 
 // Authentication
 router.post('/login', validateData(AuthValidator.LoginSchema), authController.login);
-router.post('/logout', authController.logout);
+// router.post('/logout', authController.logout);
 
 // Token Related API
-router.post('/refresh-token', authController.refreshToken);
-router.get('/verify-token', authController.verifyToken); 
+// ! TEMPORARILY DISABLED WE WILL UTILIZE A SIMPLER CLIENT SIDE REF
+// router.post('/refresh-token', authController.refreshToken);
+// router.get('/verify-token', authController.verifyToken); 
 
 // ! Test Routes
 // ! DEFUNCT

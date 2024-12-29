@@ -4,6 +4,8 @@ import chalk from 'chalk';
 
 // Import configuration and route modules
 import authRoutes from './routes/authRoute.js';
+import profileRoutes from './routes/profileRoute.js';
+
 import connectDB from './config/dbConfig.js';
 import configureCloudinary from './config/cloudinaryConfig.js';
 
@@ -21,14 +23,22 @@ app.use(
 // Server Initialization
 (async () => {
   try {
-    // Call in configurations to the server
-    await connectDB();
-    await configureCloudinary();
 
+
+    // Port where the server file is running at
     const PORT = process.env.PORT || 4000;
+
+        // Call in configurations to the server
+        await connectDB();
+        await configureCloudinary();
+    
 
     // Initiate Routes to the Server
     app.use('/auth', authRoutes);
+    app.use('/profile', profileRoutes);
+
+      
+    
 
     app.listen(PORT, () => {
       console.log(chalk.blue(`Server is running on http://localhost:${PORT}`));

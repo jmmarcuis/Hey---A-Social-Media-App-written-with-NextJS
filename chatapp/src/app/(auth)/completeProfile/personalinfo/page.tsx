@@ -1,9 +1,10 @@
 "use client"
 import { useContext, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
-import { ProfileContext } from '../../../contexts/CompleteProfileContext';
-import { ProfilePayload } from '../../../validators/profileValidation';
+import { useForm } from 'react-hook-form';import { ProfileContext } from '@/app/contexts/CompleteProfileContext'; 
+import { ProfilePayload } from '@/app/validators/profileValidation';
+
+
 
 export default function PersonalInfoPage() {
     const router = useRouter();

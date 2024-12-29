@@ -2,11 +2,16 @@
 "use client"
 import { z } from 'zod';
 
-// Define a constant for the minimum age requirement
 const MIN_AGE = 13;
-
 const today = new Date();
 const minDate = new Date(today.getFullYear() - MIN_AGE, today.getMonth(), today.getDate());
+
+// Custom URL validator for Cloudinary URLs
+const cloudinaryUrlSchema = z.string()
+  .url("Must be a valid URL")
+  .regex(/^https?:\/\/.*cloudinary\.com\/.*/, "Must be a Cloudinary URL")
+  .optional()
+  .or(z.literal(''));
 
 export const profileSchema = z.object({
   firstName: z.string()
@@ -19,10 +24,8 @@ export const profileSchema = z.object({
     .trim(),
   bio: z.string()
     .max(500, "Bio is too long"),
-  profilePicture: z.string()
-    .optional(), // Allow null or undefined to enable default value in Mongoose
-  coverPicture: z.string()
-    .optional(), // Allow null or undefined to enable default value in Mongoose
+  profilePicture: cloudinaryUrlSchema,
+  coverPicture: cloudinaryUrlSchema,
   gender: z.enum(["male", "female", "other"]),
   dateOfBirth: z.date()
     .max(today, "Date of birth cannot be in the future")

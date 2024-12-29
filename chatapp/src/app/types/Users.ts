@@ -1,5 +1,8 @@
-// src/types/Users.ts
-"use client"
+// src/types/Auth.ts
+export interface Token {
+  token: string;
+}
+
 export interface User {
   id: string;
   username: string;
@@ -40,34 +43,22 @@ export interface User {
   lastLogin?: Date;
 }
 
-export interface TokenPair {
-  accessToken: string;
-  refreshToken: string;
-}
-
-// Authentication response interfaces
 export interface AuthResponse {
+  success: boolean;
   message: string;
-  tokens: TokenPair;
-  user: {
-    verification: { isVerified: boolean; otp?: { code: string; expiresAt: Date; } | undefined; };
-    id: string;
-    username: string;
-    email: string;
-    isVerified: boolean;
+  token: string;
+  user: AuthUser;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  username: string;
+  verification: {
+      isVerified: boolean;
+      otp?: {
+          code: string;
+          expiresAt: Date;
+      };
   };
 }
-// Current authenticated user state
-export type AuthUser = Pick<User, 'id' | 'email' | 'username'> & {
-  verification: {
-    isVerified: boolean;
-    otp?: {
-      code: string;
-      expiresAt: Date;
-    };
-  };
-  tokens: TokenPair;
-
-
-
-};

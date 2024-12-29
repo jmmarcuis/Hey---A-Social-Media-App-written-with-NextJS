@@ -1,13 +1,7 @@
 // models/userModel.ts
 import mongoose, { Document, Schema } from 'mongoose';
 
-// Define interfaces for nested structures
-interface RefreshTokenSchema {
-  token: string;
-  createdAt: Date;
-  expiresAt: Date;
-}
-
+// Define interfaces for nested structures 
 interface Verification {
   isVerified: boolean;
   otp: {
@@ -53,23 +47,15 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
-  verification: {
-    isVerified: boolean;
-    otp: {
-      code: string | null; 
-      expiresAt: Date | null;
-    };
-  };
-
+  verification: Verification;
+  profile: Profile;  
   social: Social;
   stats: Stats;
-  refreshTokens: RefreshTokenSchema[];
-  registeredAt: Date;
+   registeredAt: Date;
   lastLogin?: Date;
   lastActive?: Date;
-  profile?: any;
 }
-
+ 
 
 
 const UserSchema = new Schema<IUser>(
@@ -90,7 +76,7 @@ const UserSchema = new Schema<IUser>(
       trim: true,
       match: [
         /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/,
-        "Please fill a valid email address",
+        'Please fill a valid email address',
       ],
       index: true,
     },
@@ -105,8 +91,8 @@ const UserSchema = new Schema<IUser>(
         default: false,
       },
       otp: {
-        code: { type: String , default: null },
-        expiresAt: { type: Date, default: null, },
+        code: { type: String, default: null },
+        expiresAt: { type: Date, default: null },
       },
     },
     profile: {
@@ -124,46 +110,48 @@ const UserSchema = new Schema<IUser>(
       },
       profilePicture: {
         type: String,
-        default: "/default-avatar.png",
       },
       coverPicture: {
         type: String,
-        default: "/default-cover.png",
       },
       gender: {
         type: String,
-        enum: ["male", "female", "other"],
+        enum: ['male', 'female', 'other'],
       },
       dateOfBirth: {
         type: Date,
       },
     },
     social: {
-      friends: [{
-        user: {
-          type: Schema.Types.ObjectId,
-          ref: "Users",
+      friends: [
+        {
+          user: {
+            type: Schema.Types.ObjectId,
+            ref: 'Users',
+          },
+          status: {
+            type: String,
+            enum: ['pending', 'accepted'],
+            default: 'pending',
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
         },
-        status: {
-          type: String,
-          enum: ["pending", "accepted"],
-          default: "pending",
+      ],
+      blocked: [
+        {
+          user: {
+            type: Schema.Types.ObjectId,
+            ref: 'Users',
+          },
+          createdAt: {
+            type: Date,
+            default: Date.now,
+          },
         },
-        createdAt: {
-          type: Date,
-          default: Date.now,
-        },
-      }],
-      blocked: [{
-        user: {
-          type: Schema.Types.ObjectId,
-          ref: "Users",
-        },
-        createdAt: {
-          type: Date,
-          default: Date.now,
-        },
-      }],
+      ],
     },
     stats: {
       postsCount: {
@@ -175,11 +163,7 @@ const UserSchema = new Schema<IUser>(
         default: 0,
       },
     },
-    refreshTokens: [{
-      token: { type: String },
-      createdAt: { type: Date, default: Date.now },
-      expiresAt: { type: Date }
-    }],
+ 
     lastActive: {
       type: Date,
     },
@@ -196,6 +180,7 @@ const UserSchema = new Schema<IUser>(
   }
 );
 
+ 
 UserSchema.index({ "profile.firstName": 1, "profile.lastName": 1 });
 UserSchema.index({ status: 1 });
 UserSchema.index({ "social.friends.status": 1 });

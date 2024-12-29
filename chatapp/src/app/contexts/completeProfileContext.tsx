@@ -66,3 +66,4 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         </ProfileContext.Provider>
     );
 }
+
