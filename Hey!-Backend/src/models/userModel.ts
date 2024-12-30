@@ -113,12 +113,8 @@ const UserSchema = new Schema<IUser>(
         type: String,
         maxlength: 300,
       },
-      profilePicture: {
-        type: String,
-      },
-      coverPicture: {
-        type: String,
-      },
+      profilePicture: { type: String, required: false },
+      coverPicture: { type: String, required: false }, 
       gender: {
         type: String,
         enum: ['male', 'female', 'other'],
