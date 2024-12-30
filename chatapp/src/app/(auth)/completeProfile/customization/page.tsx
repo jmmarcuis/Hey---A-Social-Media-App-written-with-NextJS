@@ -43,10 +43,8 @@ export default function CustomizeProfilePage() {
     };
 
     return (
-        <div className="max-w-md mx-auto mt-4 ">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-4">
-                Customize Your Profile
-            </h1>
+        <div className="max-w-md mx-auto  ">
+
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 {/* Profile Picture Upload */}

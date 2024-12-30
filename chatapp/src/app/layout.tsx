@@ -2,7 +2,7 @@ import type { Metadata } from "next";
  import "./globals.css";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { ProfileProvider } from "./contexts/CompleteProfileContext";
-
+import { Toaster } from 'react-hot-toast';
  
 export const metadata: Metadata = {
   title: "Hey! - Social Media App by JeiiiMarcs",
@@ -18,6 +18,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
        >
+                <Toaster />
         <ThemeProvider>
         <ProfileProvider>
           {children}

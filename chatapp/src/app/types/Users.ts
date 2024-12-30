@@ -1,3 +1,5 @@
+import { ProfilePayload } from "../validators/profileValidation";
+
 // src/types/Auth.ts
 export interface Token {
   token: string;
@@ -58,11 +60,17 @@ export interface VerifiedResponse{
 }};
 }
 
-export interface CompleteProfileResponse{
+export interface IsCompleteProfileResponse{
   success:boolean;
   userProfileStatus:{
     isComplete:boolean;
   }
+}
+
+export interface CompleteProfileResponse {
+  success: boolean;
+  message: string;
+  profile?: ProfilePayload;
 }
 
 export interface AuthUser {

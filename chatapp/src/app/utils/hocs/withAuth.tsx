@@ -1,15 +1,15 @@
 // hocs/withAuth.tsx
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";  // Changed from next/router
+import { useRouter } from "next/navigation";   
  import Spinner from "../../components/Spinner";
 import { tokenManager } from "../tokenManager";
-
+import toast from 'react-hot-toast';
 function withAuth<P extends object>(WrappedComponent: React.ComponentType<P>) {
   return function AuthProtectedComponent(props: P) {
     const router = useRouter();
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
- 
+
     useEffect(() => {
       const checkAuth = () => {
         const token = tokenManager.getToken();
@@ -17,6 +17,11 @@ function withAuth<P extends object>(WrappedComponent: React.ComponentType<P>) {
           setIsAuthenticated(true);
         } else {
           tokenManager.clearToken();
+          toast.error('Please login to access this page', {
+            duration: 1000,
+            position: 'top-center',
+            icon: '🔒',
+          });
           router.push("/login");
         }
         setTimeout(() => {
@@ -24,17 +29,14 @@ function withAuth<P extends object>(WrappedComponent: React.ComponentType<P>) {
         }, 3000);
       };
       checkAuth();
-    }, [ router]);
+    }, [router]);
 
     if (isLoading) {
       return <Spinner />;
     }
-
     if (!isAuthenticated) {
-      console.log("You aren't supposed to be here");
       return null;
     }
-
     return <WrappedComponent {...props} />;
   };
 }
