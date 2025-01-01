@@ -14,17 +14,21 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     const [profileData, setProfileData] = useState<ProfilePayload>(() => {
         if (typeof window !== 'undefined') {
             const savedProfileData = localStorage.getItem('profileData');
-            return savedProfileData 
-                ? JSON.parse(savedProfileData) 
+            const parsedData = savedProfileData ? JSON.parse(savedProfileData) : null;
+            return parsedData
+                ? {
+                      ...parsedData,
+                      dateOfBirth: parsedData.dateOfBirth ? new Date(parsedData.dateOfBirth).toISOString() : null,
+                  }
                 : {
-                    firstName: '',
-                    lastName: '',
-                    bio: '',
-                    profilePicture: undefined,
-                    coverPicture: undefined,
-                    gender: 'male',
-                    dateOfBirth: new Date(),
-                };
+                      firstName: '',
+                      lastName: '',
+                      bio: '',
+                      profilePicture: undefined,
+                      coverPicture: undefined,
+                      gender: 'male',
+                      dateOfBirth: new Date().toISOString(),
+                  };
         }
         return {
             firstName: '',
@@ -33,25 +37,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
             profilePicture: undefined,
             coverPicture: undefined,
             gender: 'male',
-            dateOfBirth: new Date(),
+            dateOfBirth: new Date().toISOString(),
         };
     });
-
+    
     const updateProfileData = (data: Partial<ProfilePayload>) => {
         setProfileData((prevData) => {
             const newData = {
                 ...prevData,
                 ...data,
             };
-            
-            // Save to localStorage
+            // Save to localStorage as JSON string
             if (typeof window !== 'undefined') {
-                localStorage.setItem('profileData', JSON.stringify(newData));
+                localStorage.setItem(
+                    'profileData',
+                    JSON.stringify({
+                        ...newData,
+                        dateOfBirth: newData.dateOfBirth ? new Date(newData.dateOfBirth).toISOString() : null,
+                    })
+                );
             }
-            
             return newData;
         });
     };
+    
 
     // Optional: Sync with localStorage whenever profileData changes
     useEffect(() => {

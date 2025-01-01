@@ -77,8 +77,8 @@ export const profileController = {
                 'profile.bio': bio,
                 'profile.gender': gender,
                 'profile.dateOfBirth': dateOfBirth,
-                'profile.profilePicture': profilePicture, // Save the URL string
-                'profile.coverPicture': coverPicture, // Save the URL string
+                'profile.profilePicture': profilePicture, 
+                'profile.coverPicture': coverPicture, 
               },
             },
             { new: true }

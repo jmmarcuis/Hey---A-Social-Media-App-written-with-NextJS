@@ -52,8 +52,7 @@ export default function Login() {
     try {
       await verify(email, otp);
       setIsOTPModalOpen(false);
-      // verify function will handle the redirect
-      router.push('/completeprofile/personalinfo');
+      router.push('/completeprofile');
 
     } catch (error) {
       console.error("Verification failed", error);

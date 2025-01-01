@@ -1,7 +1,7 @@
 // hocs/withProfileComplete.tsx
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import useCompleteProfile from '@/app/hooks/useCompleteProfile';
+import { useCompleteProfile } from '@/app/hooks/useCompleteProfile';
 import Spinner from '@/app/components/Spinner';
 import toast from 'react-hot-toast';
 function withProfileComplete<P extends object>(WrappedComponent: React.ComponentType<P>) {
@@ -20,7 +20,7 @@ function withProfileComplete<P extends object>(WrappedComponent: React.Component
           duration: 1000,
           position: 'top-center',
         });
-        router.push('/completeprofile/personalinfo');
+        router.push('/completeprofile');
       }
     }, [loading, error, isProfileComplete, router]);
 
